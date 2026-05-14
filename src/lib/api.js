@@ -1368,8 +1368,15 @@ export const api = {
   /**
    * Enroll the authenticated user in a course.
    * Idempotent: returns existing enrollment if already enrolled.
+   *
+   * `userId` must be passed by the caller (typically from `useAuth().user.id`).
+   * Directus rejects the POST with "Validation failed for field user_id" if
+   * we rely on a server-side preset that is not configured on the policy.
    */
-  async enrollInCourse(courseId) {
+  async enrollInCourse(courseId, userId) {
+    if (!userId) {
+      throw new Error('Cannot enroll: missing user id (not authenticated?)');
+    }
     const existing = await authFetch(
       `/items/course_enrollments?filter[course_id][_eq]=${courseId}&filter[user_id][_eq]=$CURRENT_USER&limit=1`
     );
@@ -1378,6 +1385,7 @@ export const api = {
     return authFetch('/items/course_enrollments', {
       method: 'POST',
       body: {
+        user_id: userId,
         course_id: courseId,
         status: 'active',
         progress_percentage: 0,
@@ -1399,13 +1407,25 @@ export const api = {
   /**
    * Get full progress data for a specific course:
    * enrollment record + per-lesson completion status.
+   *
+   * Resilient: any of the three sub-requests may 403 if the user's policy
+   * does not grant read on that collection. We treat partial failure as
+   * "no data available" rather than blowing up the whole page.
    */
   async getCourseProgress(courseId) {
-    const [enrollments, lessonProgressData, course] = await Promise.all([
+    const settled = await Promise.allSettled([
       authFetch(`/items/course_enrollments?filter[course_id][_eq]=${courseId}&filter[user_id][_eq]=$CURRENT_USER&limit=1`),
       authFetch(`/items/lesson_progress?filter[user_id][_eq]=$CURRENT_USER&fields=lesson_id,completed,completed_at`),
       authFetch(`/items/courses/${courseId}?fields=id,title,modules.id,modules.title,modules.order,modules.lessons.id,modules.lessons.title,modules.lessons.order`),
     ]);
+
+    const enrollments        = settled[0].status === 'fulfilled' ? settled[0].value : null;
+    const lessonProgressData = settled[1].status === 'fulfilled' ? settled[1].value : null;
+    const course             = settled[2].status === 'fulfilled' ? settled[2].value : null;
+
+    for (const s of settled) {
+      if (s.status === 'rejected') console.warn('getCourseProgress: partial failure', s.reason?.message);
+    }
 
     const enrollment = enrollments?.[0] || null;
 

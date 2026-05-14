@@ -100,7 +100,7 @@ function LessonList({ course, progress, isEnrolled }) {
 
 export default function CourseDetailPage() {
   const { slug } = useParams();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -175,7 +175,10 @@ export default function CourseDetailPage() {
     setEnrolling(true);
     setEnrollError(null);
     try {
-      await api.enrollInCourse(course.id);
+      if (!user?.id) {
+        throw new Error("Vous devez être connecté pour vous inscrire.");
+      }
+      await api.enrollInCourse(course.id, user.id);
       const data = await api.getCourseProgress(course.id);
       setProgress(data);
     } catch (err) {
