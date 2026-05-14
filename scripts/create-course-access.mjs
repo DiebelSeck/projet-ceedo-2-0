@@ -117,7 +117,33 @@ async function preflight() {
   }
 
   // 3. course_access must NOT exist (otherwise script is for create only)
-  const existing = await dx('/collections/course_access', { expect404: true });
+  //
+  // Directus 11.x quirk: GET /collections/<missing> returns 403 instead of 404.
+  // To distinguish "absent" from "no permission", we first probe GET /collections
+  // (a list call). If the list works, the token has schema-read rights, and a
+  // 403 on the specific row can only mean the collection doesn't exist yet.
+  let canListCollections = false;
+  try {
+    await dx('/collections');
+    canListCollections = true;
+  } catch (err) {
+    console.error(`✗ Cannot list /collections: ${err.message}`);
+    console.error('  The token lacks schema read access. Aborting.');
+    process.exit(2);
+  }
+
+  let existing = null;
+  try {
+    existing = await dx('/collections/course_access', { expect404: true });
+  } catch (err) {
+    // 403 here, AFTER /collections succeeded, means "row absent" in 11.x.
+    if (canListCollections && / 403:/.test(err.message)) {
+      existing = null;
+    } else {
+      throw err;
+    }
+  }
+
   if (existing) {
     console.warn('  ⚠ course_access already exists. Script will be idempotent:');
     console.warn('    it will only add missing fields/relations, never modify or drop.');
