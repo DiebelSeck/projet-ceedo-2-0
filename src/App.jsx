@@ -40,6 +40,7 @@ import AdminUsersPage from './pages/AdminUsersPage'
 import AdminStudentDetailPage from './pages/AdminStudentDetailPage'
 import AdminCertificatesPage from './pages/AdminCertificatesPage'
 import AdminProgressPage from './pages/AdminProgressPage'
+import AdminAcademicModerationPage from './pages/AdminAcademicModerationPage'
 import RequireEditorialRole from './components/auth/RequireEditorialRole'
 
 export default function App() {
@@ -143,6 +144,14 @@ export default function App() {
             element={
               <RequireEditorialRole allowedRoles={['Admin', 'Editor']}>
                 <AdminCertificatesPage />
+              </RequireEditorialRole>
+            }
+          />
+          <Route
+            path="admin/academic-moderation"
+            element={
+              <RequireEditorialRole allowedRoles={['Admin', 'Editor']}>
+                <AdminAcademicModerationPage />
               </RequireEditorialRole>
             }
           />
