@@ -14,12 +14,56 @@ function formatDate(iso) {
   }
 }
 
+const SORT_FIELDS = [
+  { value: 'lastActivity',    label: 'Dernière activité' },
+  { value: 'name',            label: 'Nom' },
+  { value: 'averageProgress', label: 'Progression moy.' },
+  { value: 'enrollmentDate',  label: 'Date d’inscription' },
+  { value: 'pendingCerts',    label: 'Certificats en attente' },
+  { value: 'certificateCount',label: 'Certificats délivrés' },
+];
+
+// Comparator: nulls/NaN always sort last regardless of direction.
+function compareWithNullsLast(av, bv, dir) {
+  const aMissing = av == null || (typeof av === 'number' && Number.isNaN(av));
+  const bMissing = bv == null || (typeof bv === 'number' && Number.isNaN(bv));
+  if (aMissing && bMissing) return 0;
+  if (aMissing) return 1;
+  if (bMissing) return -1;
+  if (typeof av === 'string' && typeof bv === 'string') {
+    return dir === 'asc'
+      ? av.localeCompare(bv, 'fr', { sensitivity: 'base' })
+      : bv.localeCompare(av, 'fr', { sensitivity: 'base' });
+  }
+  return dir === 'asc' ? av - bv : bv - av;
+}
+
+function getSortValue(u, key) {
+  switch (key) {
+    case 'name':             return (u.name || '').trim() || null;
+    case 'averageProgress':  return Number.isFinite(u.averageProgress) ? u.averageProgress : null;
+    case 'lastActivity':     return u.lastActivity   ? Date.parse(u.lastActivity)   : null;
+    case 'enrollmentDate':   return u.enrollmentDate ? Date.parse(u.enrollmentDate) : null;
+    case 'pendingCerts':     return Number.isFinite(u.pendingCertCount) ? u.pendingCertCount : null;
+    case 'certificateCount': return Array.isArray(u.certificates) ? u.certificates.length : null;
+    default:                 return null;
+  }
+}
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [active30dFilter, setActive30dFilter] = useState('all');     // 'all' | 'yes' | 'no'
+  const [pendingCertFilter, setPendingCertFilter] = useState('all'); // 'all' | 'yes' | 'no'
+  const [issuedCertFilter, setIssuedCertFilter] = useState('all');   // 'all' | 'yes' | 'no'
+  const [progressMin, setProgressMin] = useState('');                // empty string = unset
+  const [progressMax, setProgressMax] = useState('');
+  const [sortBy, setSortBy] = useState('lastActivity');
+  const [sortDir, setSortDir] = useState('desc');
 
   useEffect(() => {
     document.title = 'Gestion des Étudiants — Admin LMS';
@@ -30,12 +74,15 @@ export default function AdminUsersPage() {
     async function load() {
       try {
         setLoading(true);
+        setLoadError(null);
         const data = await api.getAdminUsersLearningOverview();
         // Only show users who have interacted with LMS
-        const activeOnly = data.filter(u => u.enrollments.length > 0 || u.certificates.length > 0);
+        const activeOnly = (data || []).filter(u => u.enrollments.length > 0 || u.certificates.length > 0);
         setUsers(activeOnly);
       } catch (err) {
         console.error(err);
+        setLoadError(err?.message || 'Erreur de chargement de la liste des étudiants.');
+        setUsers([]);
       } finally {
         setLoading(false);
       }
@@ -55,17 +102,66 @@ export default function AdminUsersPage() {
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return users.filter(u => {
+    const minN = progressMin === '' ? null : Number(progressMin);
+    const maxN = progressMax === '' ? null : Number(progressMax);
+
+    const passes = (u) => {
+      // Enrollment status (any-of)
       if (statusFilter !== 'all') {
         const hasStatus = (u.enrollments || []).some(e => e?.status === statusFilter);
         if (!hasStatus) return false;
       }
+      // Active 30d
+      if (active30dFilter === 'yes' && !u.active30d) return false;
+      if (active30dFilter === 'no'  &&  u.active30d) return false;
+      // Pending certificates
+      const pending = Number.isFinite(u.pendingCertCount) ? u.pendingCertCount : 0;
+      if (pendingCertFilter === 'yes' && pending <= 0) return false;
+      if (pendingCertFilter === 'no'  && pending >  0) return false;
+      // Issued certificates
+      const issued = Array.isArray(u.certificates) ? u.certificates.length : 0;
+      if (issuedCertFilter === 'yes' && issued <= 0) return false;
+      if (issuedCertFilter === 'no'  && issued >  0) return false;
+      // Progress range
+      const avg = Number.isFinite(u.averageProgress) ? u.averageProgress : 0;
+      if (minN != null && Number.isFinite(minN) && avg < minN) return false;
+      if (maxN != null && Number.isFinite(maxN) && avg > maxN) return false;
+      // Free-text search: name, email, OR any enrollment course title
       if (!q) return true;
       const name = (u.name || '').toLowerCase();
       const email = (u.email || '').toLowerCase();
-      return name.includes(q) || email.includes(q);
-    });
-  }, [users, search, statusFilter]);
+      if (name.includes(q) || email.includes(q)) return true;
+      for (const e of u.enrollments || []) {
+        const title = (e?.course_id?.title || '').toLowerCase();
+        if (title.includes(q)) return true;
+      }
+      return false;
+    };
+
+    const list = users.filter(passes);
+
+    const sorted = [...list].sort((a, b) =>
+      compareWithNullsLast(getSortValue(a, sortBy), getSortValue(b, sortBy), sortDir)
+    );
+
+    return sorted;
+  }, [
+    users, search, statusFilter,
+    active30dFilter, pendingCertFilter, issuedCertFilter,
+    progressMin, progressMax, sortBy, sortDir,
+  ]);
+
+  function resetFilters() {
+    setSearch('');
+    setStatusFilter('all');
+    setActive30dFilter('all');
+    setPendingCertFilter('all');
+    setIssuedCertFilter('all');
+    setProgressMin('');
+    setProgressMax('');
+    setSortBy('lastActivity');
+    setSortDir('desc');
+  }
 
   return (
     <main className="bg-[#faf9f6] min-h-screen">
@@ -89,13 +185,29 @@ export default function AdminUsersPage() {
           </a>
         </div>
 
-        <div className="mb-6 flex gap-4 flex-wrap items-center">
+        {loadError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-[12px] text-red-800 flex items-center justify-between gap-4 flex-wrap" role="alert">
+            <div>
+              <span className="font-bold uppercase tracking-widest text-[10px] mr-2">Erreur de chargement</span>
+              {loadError}
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="text-[10px] uppercase tracking-widest font-bold text-red-800 border border-red-300 px-3 py-2 hover:bg-red-100"
+            >
+              Réessayer
+            </button>
+          </div>
+        )}
+
+        <div className="mb-4 flex gap-4 flex-wrap items-center">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher par nom ou email…"
-            className="w-full md:w-96 px-4 py-3 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
+            placeholder="Rechercher par nom, email ou formation…"
+            className="w-full md:w-80 px-4 py-3 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
           />
           {availableStatuses.length > 0 && (
             <select
@@ -109,7 +221,95 @@ export default function AdminUsersPage() {
               ))}
             </select>
           )}
-          <span className="text-[10px] uppercase tracking-widest text-[#767676] font-bold">
+          <select
+            value={active30dFilter}
+            onChange={(e) => setActive30dFilter(e.target.value)}
+            className="px-4 py-3 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
+            aria-label="Filtre Actif (30j)"
+          >
+            <option value="all">Actif (30j) : tous</option>
+            <option value="yes">Actif (30j) : oui</option>
+            <option value="no">Actif (30j) : non</option>
+          </select>
+          <select
+            value={pendingCertFilter}
+            onChange={(e) => setPendingCertFilter(e.target.value)}
+            className="px-4 py-3 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
+            aria-label="Filtre certificats en attente"
+          >
+            <option value="all">Cert. en attente : tous</option>
+            <option value="yes">Avec en attente</option>
+            <option value="no">Sans en attente</option>
+          </select>
+          <select
+            value={issuedCertFilter}
+            onChange={(e) => setIssuedCertFilter(e.target.value)}
+            className="px-4 py-3 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
+            aria-label="Filtre certificats délivrés"
+          >
+            <option value="all">Cert. délivré : tous</option>
+            <option value="yes">Avec certificat</option>
+            <option value="no">Sans certificat</option>
+          </select>
+        </div>
+
+        <div className="mb-6 flex gap-4 flex-wrap items-center">
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] uppercase tracking-widest text-[#767676] font-bold">Progression</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={progressMin}
+              onChange={(e) => setProgressMin(e.target.value)}
+              placeholder="Min"
+              className="w-20 px-3 py-2 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
+              aria-label="Progression minimum"
+            />
+            <span className="text-[#767676]">–</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={progressMax}
+              onChange={(e) => setProgressMax(e.target.value)}
+              placeholder="Max"
+              className="w-20 px-3 py-2 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
+              aria-label="Progression maximum"
+            />
+            <span className="text-[10px] text-[#767676]">%</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] uppercase tracking-widest text-[#767676] font-bold">Trier par</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-3 py-2 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
+            >
+              {SORT_FIELDS.map(f => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
+              className="px-3 py-2 border border-[#d8d5ce] bg-white text-sm hover:bg-[#faf9f6]"
+              aria-label={`Inverser l'ordre (actuel : ${sortDir === 'asc' ? 'croissant' : 'décroissant'})`}
+              title={sortDir === 'asc' ? 'Croissant' : 'Décroissant'}
+            >
+              {sortDir === 'asc' ? '↑' : '↓'}
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="px-4 py-2 text-[10px] uppercase tracking-widest font-bold text-[#8b6914] border border-[#8b6914]/40 hover:bg-[#8b6914]/5"
+          >
+            Réinitialiser
+          </button>
+          <span className="text-[10px] uppercase tracking-widest text-[#767676] font-bold ml-auto">
             {filteredUsers.length} / {users.length} étudiants
           </span>
         </div>

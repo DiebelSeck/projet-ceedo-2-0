@@ -1987,6 +1987,19 @@ export const api = {
       let progressCount = 0;
       const completionDurationsMs = [];
 
+      // Certified course titles for this user — drives pendingCertCount.
+      // Title-based matching used here because requesting `course_id.id`
+      // on these two collections regressed the list (some relational
+      // policy quirk). The detail page (`getAdminStudentById`) keeps id
+      // matching for accuracy; this list view tolerates a title collision.
+      const certifiedCourseTitles = new Set();
+      for (const c of u.certificates) {
+        const ct = c?.course_id?.title;
+        if (ct) certifiedCourseTitles.add(ct);
+      }
+
+      let pendingCertCount = 0;
+
       for (const e of u.enrollments) {
         const tStart = e?.started_at   ? Date.parse(e.started_at)   : NaN;
         const tEnd   = e?.completed_at ? Date.parse(e.completed_at) : NaN;
@@ -2004,6 +2017,16 @@ export const api = {
           progressSum += e.progress_percentage;
           progressCount += 1;
         }
+        const courseTitle = e?.course_id?.title;
+        const pct = Number.isFinite(e?.progress_percentage) ? e.progress_percentage : 0;
+        if (
+          e?.status === 'completed' &&
+          pct === 100 &&
+          courseTitle &&
+          !certifiedCourseTitles.has(courseTitle)
+        ) {
+          pendingCertCount += 1;
+        }
       }
 
       u.enrollmentDate = Number.isFinite(earliestStart) ? new Date(earliestStart).toISOString() : null;
@@ -2013,6 +2036,7 @@ export const api = {
       u.averageCompletionDays = completionDurationsMs.length > 0
         ? Math.round(completionDurationsMs.reduce((a, b) => a + b, 0) / completionDurationsMs.length / (24 * 60 * 60 * 1000))
         : null;
+      u.pendingCertCount = pendingCertCount;
     }
 
     return Array.from(activeUsers.values());
