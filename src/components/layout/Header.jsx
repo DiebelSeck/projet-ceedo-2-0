@@ -1,16 +1,35 @@
 import { useState, useEffect } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { NAV_ITEMS } from '../../data/navigation'
 import { useAuth } from '../../hooks/useAuth'
 import SectionHeader from '../ui/SectionHeader'
+
+// Editorial/admin roles allowed to see LMS admin + editorial panel entries.
+// Kept as a const at module scope so it stays cheap to evaluate per render.
+const EDITORIAL_ROLES = ['Administrator', 'Admin', 'Editor', 'Reviewer']
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [authorDropdownOpen, setAuthorDropdownOpen] = useState(false)
   const [explorerOpen, setExplorerOpen] = useState(false)
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
+
+  const isEditorial = isAuthenticated && EDITORIAL_ROLES.includes(user?.role?.name)
+
+  async function handleLogout() {
+    try {
+      await logout()
+    } catch (err) {
+      console.error('[Header] logout failed:', err)
+    } finally {
+      setAuthorDropdownOpen(false)
+      setMobileOpen(false)
+      navigate('/')
+    }
+  }
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -185,10 +204,11 @@ export default function Header() {
                       <>
                         <DropdownLink to="/my-articles" label="Tableau de bord" />
                         <DropdownLink to="/submit-article" label="Soumettre un article" />
-                        
-                        {['Admin', 'Editor', 'Reviewer'].includes(user?.role?.name) && (
+
+                        {isEditorial && (
                           <>
                             <div className="h-px bg-[#d8d5ce]/30 my-2" />
+                            <DropdownLink to="/admin" label="Administration LMS" />
                             <DropdownLink to="/editor" label="Panel Éditorial" />
                           </>
                         )}
@@ -197,6 +217,15 @@ export default function Header() {
                         <DropdownLink to="/my-articles?status=draft" label="Mes Brouillons" />
                         <DropdownLink to="/my-articles?status=review" label="En Révision" />
                         <DropdownLink to="/my-articles?status=published" label="Mes Publications" />
+
+                        <div className="h-px bg-[#d8d5ce]/30 my-2" />
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#8b6914] hover:bg-[#faf9f6] hover:text-[#1a1a1a] transition-all"
+                        >
+                          Se déconnecter
+                        </button>
                       </>
                     ) : (
                       <>
