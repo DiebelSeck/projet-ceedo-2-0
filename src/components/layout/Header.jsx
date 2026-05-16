@@ -78,31 +78,32 @@ export default function Header() {
               </button>
 
               {explorerOpen && (
-                <div 
-                  className="absolute left-0 top-full pt-2 w-[780px]"
+                <div
+                  className="absolute left-0 top-full pt-2 w-[680px]"
                   onMouseLeave={() => setExplorerOpen(false)}
                 >
-                  <div className="bg-white border border-[#d8d5ce] shadow-xl p-10">
-                    {/* Mega Menu Header — institutional eyebrow + serif tagline */}
-                    <div className="mb-10 pb-6 border-b border-[#d8d5ce]/60">
+                  <div className="bg-white border border-[#d8d5ce] shadow-xl p-8">
+                    {/* Header — small uppercase eyebrow stays primary;
+                        subtitle reduced to a quiet sans-serif support line. */}
+                    <div className="mb-7 pb-5 border-b border-[#d8d5ce]/60">
                       <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-[#8b6914] mb-2">
                         Explorer le système Ceedo
                       </p>
-                      <p
-                        className="text-base text-[#4a4a4a] italic leading-relaxed"
-                        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                      >
+                      <p className="text-xs text-[#767676] leading-relaxed">
                         Naviguer par axes, espaces et ressources.
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-10">
-                      {/* Column 1: Axes (Catégories) */}
+                    <div className="grid grid-cols-4 gap-6">
+                      {/* Column 1: Le Corpus */}
                       <div>
-                        <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-5 pb-3 border-b border-[#d8d5ce]/40">
-                          Axes
+                        <h4
+                          className="text-base text-[#1a1a1a] mb-4 pb-3 border-b border-[#d8d5ce]/50"
+                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                        >
+                          Le Corpus
                         </h4>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col">
                           <MegaLink to="/explorer" label="Humanités" />
                           <MegaLink to="/explorer" label="Spiritualité" />
                           <MegaLink to="/explorer" label="Philosophie" />
@@ -114,10 +115,13 @@ export default function Header() {
 
                       {/* Column 2: Espaces */}
                       <div>
-                        <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-5 pb-3 border-b border-[#d8d5ce]/40">
+                        <h4
+                          className="text-base text-[#1a1a1a] mb-4 pb-3 border-b border-[#d8d5ce]/50"
+                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                        >
                           Espaces
                         </h4>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col">
                           <MegaLink to="/communaute" label="Communauté" />
                           <MegaLink to="/evenements" label="Événements" />
                           <MegaLink to="/projet/methodologie" label="Méthodologie" />
@@ -126,10 +130,13 @@ export default function Header() {
 
                       {/* Column 3: Ressources */}
                       <div>
-                        <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-5 pb-3 border-b border-[#d8d5ce]/40">
+                        <h4
+                          className="text-base text-[#1a1a1a] mb-4 pb-3 border-b border-[#d8d5ce]/50"
+                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                        >
                           Ressources
                         </h4>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col">
                           <MegaLink to="/articles" label="Articles" />
                           <MegaLink to="/publications" label="Recherche" />
                           <MegaLink to="/dossiers" label="Dossiers" />
@@ -138,12 +145,15 @@ export default function Header() {
                         </div>
                       </div>
 
-                      {/* Column 4: Auteur */}
+                      {/* Column 4: Contribution */}
                       <div>
-                        <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-5 pb-3 border-b border-[#d8d5ce]/40">
-                          Auteur
+                        <h4
+                          className="text-base text-[#1a1a1a] mb-4 pb-3 border-b border-[#d8d5ce]/50"
+                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                        >
+                          Contribution
                         </h4>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col">
                           {isAuthenticated ? (
                             <>
                               <MegaLink to="/my-articles" label="Tableau de bord" />
@@ -356,10 +366,12 @@ function DropdownLink({ to, label }) {
 }
 
 function MegaLink({ to, label }) {
+  // Sentence-case body text, no aggressive tracking. Matches the rhythm of
+  // the surrounding nav and the editorial pages rather than a dashboard list.
   return (
     <Link
       to={to}
-      className="px-3 py-2 -ml-3 text-[10px] font-bold uppercase tracking-widest text-[#4a4a4a] hover:text-[#8b6914] hover:bg-[#faf9f6] transition-colors"
+      className="px-2 py-1.5 -ml-2 text-sm text-[#4a4a4a] hover:text-[#8b6914] transition-colors"
     >
       {label}
     </Link>
