@@ -65,7 +65,7 @@ export default function Header() {
             <div className="relative">
               <button
                 onMouseEnter={() => setExplorerOpen(true)}
-                className={`px-4 py-2 text-[11px] font-serif font-bold transition-all flex items-center gap-2 ${
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
                   explorerOpen || location.pathname.includes('/explorer')
                     ? 'text-[#8b6914]'
                     : 'text-[#4a4a4a] hover:text-[#1a1a1a]'
