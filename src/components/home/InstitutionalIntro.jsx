@@ -8,7 +8,7 @@ export default function InstitutionalIntro() {
     },
     {
       title: 'Base de Connaissances',
-      text: 'Une bibliothèque numérique structurada offrant un accès pérenne aux textes fondateurs et aux ressources documentaires.',
+      text: 'Une bibliothèque numérique structurée offrant un accès pérenne aux textes fondateurs et aux ressources documentaires.',
     },
     {
       title: 'Académie & Transmission',

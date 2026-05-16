@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom'
 
+// Each link must resolve to a distinct, public, content-bearing destination.
+// Submission / "my articles" flows are auth-gated and live in the in-app
+// Espace Auteur dropdown — they are deliberately not advertised in the public
+// footer to avoid pushing visitors to a login wall without context.
 const FOOTER_COLUMNS = [
   {
     heading: 'Le Projet',
     links: [
-      { label: 'Vision & Mission', href: '/projet' },
-      { label: 'Équipe', href: '/projet' },
-      { label: 'Partenaires', href: '/projet' },
+      { label: 'Présentation', href: '/projet' },
+      { label: 'Méthodologie', href: '/projet/methodologie' },
       { label: 'Contact', href: '/contact' },
     ],
   },
@@ -14,7 +17,8 @@ const FOOTER_COLUMNS = [
     heading: 'Ressources',
     links: [
       { label: 'Publications', href: '/publications' },
-      { label: 'Bibliothèque', href: '/bibliotheque' },
+      { label: 'Bibliothèque', href: '/library' },
+      { label: 'Dossiers', href: '/dossiers' },
       { label: 'Académie', href: '/academie' },
       { label: 'Événements', href: '/evenements' },
     ],
@@ -22,11 +26,8 @@ const FOOTER_COLUMNS = [
   {
     heading: 'Engagement',
     links: [
-      { label: 'Nous rejoindre', href: '/contact' },
       { label: 'Communauté', href: '/communaute' },
-      { label: 'Soumettre un article', href: '/submit-article' },
-      { label: 'Mes articles', href: '/my-articles' },
-      { label: 'Lettre d\'information', href: '/contact' },
+      { label: 'Nous rejoindre', href: '/contact' },
     ],
   },
 ]

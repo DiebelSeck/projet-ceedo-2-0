@@ -115,9 +115,9 @@ export default function Header() {
                           Espaces
                         </h4>
                         <div className="flex flex-col gap-1">
-                          <MegaLink to="/communaute/cercle-mai" label="Cercle MAI" />
                           <MegaLink to="/communaute" label="Communauté" />
-                          <MegaLink to="/contact" label="Réseau" />
+                          <MegaLink to="/evenements" label="Événements" />
+                          <MegaLink to="/projet/methodologie" label="Méthodologie" />
                         </div>
                       </div>
 
@@ -290,6 +290,15 @@ export default function Header() {
                 {item.label}
               </NavLink>
             ))}
+
+            {/* Secondary items — kept in mobile nav so coverage is not lost
+                when the top-bar is trimmed on desktop. */}
+            <div className="pt-6 mt-2 border-t border-[#d8d5ce]/60 flex flex-col gap-4">
+              <Link to="/projet/methodologie" className="text-sm font-bold uppercase tracking-widest text-[#4a4a4a]">Méthodologie</Link>
+              <Link to="/articles" className="text-sm font-bold uppercase tracking-widest text-[#4a4a4a]">Articles</Link>
+              <Link to="/dossiers" className="text-sm font-bold uppercase tracking-widest text-[#4a4a4a]">Dossiers</Link>
+              <Link to="/evenements" className="text-sm font-bold uppercase tracking-widest text-[#4a4a4a]">Événements</Link>
+            </div>
           </nav>
           {/* Mobile Espace Auteur */}
           <div className="mt-8 pt-8 border-t border-[#d8d5ce] flex flex-col gap-6">

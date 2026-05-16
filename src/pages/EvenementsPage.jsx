@@ -1,8 +1,14 @@
+import { Link } from 'react-router-dom'
 import SectionHeader from '../components/ui/SectionHeader'
 
+// Public events index.
+//
+// Until a public listing endpoint exists (events live in a Directus
+// `events` collection but the available helper filters by community slug
+// only — there is no global "upcoming events" fetcher), this page shows
+// an institutional empty state instead of the previously hardcoded
+// placeholder cards.
 export default function EvenementsPage() {
-  const years = ['2026']
-
   return (
     <div className="max-w-6xl mx-auto px-6 py-20 lg:py-32">
       <SectionHeader
@@ -11,56 +17,23 @@ export default function EvenementsPage() {
         subtitle="Colloques, conférences, séminaires méthodologiques et cercles de réflexion : la vie intellectuelle du Projet Ceedo en mouvement."
       />
 
-      <div className="mt-24 space-y-16">
-        {years.map(year => (
-          <div key={year}>
-            <div className="flex items-center gap-6 mb-12">
-              <h3 className="text-4xl font-serif text-[#d8d5ce]">{year}</h3>
-              <div className="h-px flex-1 bg-[#e8e6e1]"></div>
-            </div>
-
-            <div className="space-y-6">
-              {[
-                { 
-                  date: '12 Octobre', 
-                  title: 'Colloque Annuel : Épistémologies et Souverainetés', 
-                  loc: 'Paris & Visioconférence',
-                  type: 'Colloque'
-                },
-                { 
-                  date: '24 Novembre', 
-                  title: 'Séminaire sur la Philologie des Textes Classiques', 
-                  loc: 'En ligne (Réservé aux membres)',
-                  type: 'Séminaire'
-                }
-              ].map(event => (
-                <div key={event.title} className="flex flex-col md:flex-row gap-6 md:gap-12 p-8 border border-[#d8d5ce] bg-white group hover:border-[#8b6914] transition-all">
-                  <div className="md:w-24 shrink-0">
-                    <span className="block text-xl font-serif text-[#1a1a1a]">{event.date}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#8b6914]">{event.type}</span>
-                      <span className="text-[#d8d5ce]">·</span>
-                      <span className="text-[10px] uppercase text-[#767676]">{event.loc}</span>
-                    </div>
-                    <h4 className="text-xl font-serif text-[#1a1a1a] mb-4 group-hover:text-[#8b6914] transition-colors">{event.title}</h4>
-                  </div>
-                  <div className="md:w-32 flex items-center">
-                    <a href="/contact" className="text-[10px] uppercase font-bold tracking-widest text-[#1a1a1a] border-b border-[#1a1a1a] pb-1 hover:text-[#8b6914] hover:border-[#8b6914] transition-all">
-                      S'inscrire
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="mt-20 p-12 lg:p-16 bg-white border border-dashed border-[#d8d5ce] text-center">
+        <p className="text-sm font-serif italic text-[#767676] leading-relaxed max-w-xl mx-auto mb-8">
+          Le calendrier des événements sera publié prochainement.
+          Les colloques, séminaires méthodologiques et rencontres académiques
+          du Projet Ceedo seront annoncés dans cet espace dès l’ouverture officielle.
+        </p>
+        <Link
+          to="/contact"
+          className="inline-block px-8 py-3 border border-[#1a1a1a] text-[#1a1a1a] text-[10px] font-bold uppercase tracking-widest hover:bg-[#1a1a1a] hover:text-white transition-all"
+        >
+          Être tenu informé
+        </Link>
       </div>
 
-      <div className="mt-24 p-12 border border-dashed border-[#d8d5ce] text-center">
+      <div className="mt-16 text-center">
         <p className="text-sm text-[#767676] italic">
-          Les archives des événements passés seront prochainement disponibles pour les membres de l'Académie.
+          Les archives des événements passés seront accessibles aux membres de l’Académie dès leur mise en ligne.
         </p>
       </div>
     </div>

@@ -12,7 +12,7 @@ export default function MainAxes() {
     {
       title: 'Bibliothèque & Ressources',
       subtitle: 'Centraliser les sources fondamentales',
-      desc: 'L’accès pérenne aux textes classiques y aux archives documentaires.',
+      desc: 'L’accès pérenne aux textes classiques et aux archives documentaires.',
       href: '/bibliotheque',
       icon: '⊗'
     },
@@ -26,7 +26,7 @@ export default function MainAxes() {
     {
       title: 'Dynamique collective',
       subtitle: 'Activer une communauté de pensée',
-      desc: 'Stimuler le dialogue intellectuel par des rencontres y des colloques réguliers.',
+      desc: 'Stimuler le dialogue intellectuel par des rencontres et des colloques réguliers.',
       href: '/evenements',
       icon: '⊗'
     }

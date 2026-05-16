@@ -4,15 +4,15 @@ export default function MethodologyBlock() {
   const steps = [
     {
       title: 'Rigueur Scientifique',
-      desc: 'Chaque contribution est soumise à une relecture par les pairs, garantissant l\'exactitude des faits y de l\'argumentation.'
+      desc: 'Chaque contribution est soumise à une relecture par les pairs, garantissant l\'exactitude des faits et de l\'argumentation.'
     },
     {
       title: 'Sources Primaires',
-      desc: 'Retour aux sources textuelles y archéologiques directes pour éviter les biais des interprétations secondaires.'
+      desc: 'Retour aux sources textuelles et archéologiques directes pour éviter les biais des interprétations secondaires.'
     },
     {
       title: 'Transparence',
-      desc: 'Les outils d\'analyse y cadres conceptuels sont explicités pour permettre une vérification y un débat académique sain.'
+      desc: 'Les outils d\'analyse et les cadres conceptuels sont explicités pour permettre une vérification et un débat académique sain.'
     }
   ]
 

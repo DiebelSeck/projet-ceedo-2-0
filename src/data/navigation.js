@@ -1,3 +1,8 @@
+// Primary navigation — kept intentionally short (5 items) to match the
+// presentation expected from a research institute / think tank. Secondary
+// destinations (Articles, Dossiers, Événements, Méthodologie) remain
+// reachable from the Explorer mega menu, the footer and the relevant index
+// pages, so coverage is not lost — only top-bar density is reduced.
 export const NAV_ITEMS = [
   {
     label: 'Le Projet',
@@ -5,24 +10,9 @@ export const NAV_ITEMS = [
     description: 'Notre mission, notre vision, notre équipe.',
   },
   {
-    label: 'Méthodologie',
-    href: '/projet/methodologie',
-    description: 'Méthode Africaine Interne (MAI) et cadre épistémologique.',
-  },
-  {
-    label: 'Articles',
-    href: '/articles',
-    description: 'Actualités, analyses et contributions éditoriales.',
-  },
-  {
     label: 'Recherche',
     href: '/publications',
     description: 'Études académiques et rapports du Think Tank.',
-  },
-  {
-    label: 'Dossiers',
-    href: '/dossiers',
-    description: 'Groupements thématiques et clusters de savoir.',
   },
   {
     label: 'Bibliothèque',
@@ -39,10 +29,4 @@ export const NAV_ITEMS = [
     href: '/communaute',
     description: 'Réseau de chercheurs et de lecteurs.',
   },
-  {
-    label: 'Événements',
-    href: '/evenements',
-    description: 'Colloques, conférences et rencontres.',
-  },
 ]
-

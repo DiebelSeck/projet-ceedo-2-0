@@ -62,6 +62,12 @@ export default function App() {
           {/* Level 17: Think Tank Infrastructure */}
           <Route path="publications" element={<AcademicPublicationsIndexPage />} />
           <Route path="publications/:slug" element={<AcademicPublicationDetailPage />} />
+
+          {/* Aliases — /articles paths used by cards, breadcrumbs and cross-links
+              resolve to the same Think Tank views as /publications. Keeps every
+              existing <Link to="/articles/..."> alive without touching callers. */}
+          <Route path="articles" element={<AcademicPublicationsIndexPage />} />
+          <Route path="articles/:slug" element={<AcademicPublicationDetailPage />} />
           
           <Route path="dossiers" element={<DossiersIndexPage />} />
           <Route path="dossiers/:slug" element={<DossierDetailPage />} />
