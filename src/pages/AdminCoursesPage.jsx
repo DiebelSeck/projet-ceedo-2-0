@@ -5,6 +5,17 @@ import SectionHeader from '../components/ui/SectionHeader';
 
 const DIRECTUS_URL = import.meta.env.VITE_DIRECTUS_URL || 'https://admin.projetceedo20.org';
 
+const STATUS_META = {
+  published: { label: 'Publiée', className: 'bg-green-50 text-green-700 border-green-200' },
+  draft:     { label: 'Brouillon', className: 'bg-gray-100 text-gray-700 border-gray-200' },
+  review:    { label: 'En relecture', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+  archived:  { label: 'Archivée', className: 'bg-stone-100 text-stone-600 border-stone-200' },
+};
+
+function statusMeta(status) {
+  return STATUS_META[status] || { label: status || '—', className: 'bg-gray-100 text-gray-700 border-gray-200' };
+}
+
 export default function AdminCoursesPage() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,15 +87,24 @@ export default function AdminCoursesPage() {
                       <div className="text-[10px] text-[#767676] mt-1 font-mono">/{c.slug}</div>
                     </td>
                     <td className="p-4">
-                      <span className={`inline-block px-2 py-1 text-[9px] uppercase tracking-widest font-bold border ${c.status === 'published' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                        {c.status}
-                      </span>
+                      {(() => {
+                        const meta = statusMeta(c.status);
+                        return (
+                          <span className={`inline-block px-2 py-1 text-[9px] uppercase tracking-widest font-bold border ${meta.className}`}>
+                            {meta.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="p-4 text-[11px] font-bold text-[#4a4a4a]">
                       {c.is_paid ? (
-                        <span className="text-[#8b6914]">Premium ({c.price} {c.currency})</span>
+                        <span className="inline-block px-2 py-1 border border-[#8b6914]/30 text-[#8b6914]">
+                          Premium{c.price ? ` — ${c.price} ${c.currency || ''}`.trim() : ''}
+                        </span>
                       ) : (
-                        <span>Gratuit</span>
+                        <span className="inline-block px-2 py-1 border border-[#d8d5ce] text-[#4a4a4a]">
+                          Gratuit
+                        </span>
                       )}
                     </td>
                     <td className="p-4 text-center text-[#1a1a1a] font-bold">{c.enrollments_count}</td>

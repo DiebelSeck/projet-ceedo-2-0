@@ -55,34 +55,94 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-16">
+        {/* Section 1 — Population & catalogue */}
+        <h2 className="text-[10px] uppercase tracking-[0.4em] text-[#767676] font-bold mb-4">
+          Population & Catalogue
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <AdminStatCard
-            title="Total Formations"
-            value={stats?.totalCourses || 0}
+            title="Étudiants inscrits"
+            value={stats?.totalStudents ?? 0}
+            icon="👥"
+            linkText="Voir les étudiants"
+            internalLinkUrl="/admin/users"
+          />
+          <AdminStatCard
+            title="Étudiants actifs"
+            value={stats?.activeStudents ?? 0}
+            icon="🧑‍🎓"
+            linkText="Suivre la progression"
+            internalLinkUrl="/admin/progress"
+          />
+          <AdminStatCard
+            title="Total formations"
+            value={stats?.totalCourses ?? 0}
             icon="📚"
             linkText="Gérer les formations"
             internalLinkUrl="/admin/courses"
           />
           <AdminStatCard
+            title="Formations publiées"
+            value={stats?.publishedCourses ?? 0}
+            icon="✅"
+            linkText="Gérer les formations"
+            internalLinkUrl="/admin/courses"
+          />
+        </div>
+
+        {/* Section 2 — Apprentissage */}
+        <h2 className="text-[10px] uppercase tracking-[0.4em] text-[#767676] font-bold mt-12 mb-4">
+          Apprentissage
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <AdminStatCard
+            title="Total leçons"
+            value={stats?.totalLessons ?? 0}
+            icon="📖"
+            linkText="Gérer dans Directus"
+            linkUrl={`${DIRECTUS_URL}/admin/content/lessons`}
+          />
+          <AdminStatCard
+            title="Leçons complétées"
+            value={stats?.completedLessons ?? 0}
+            icon="✔️"
+            linkText="Suivre la progression"
+            internalLinkUrl="/admin/progress"
+          />
+          <AdminStatCard
+            title="Taux de complétion"
+            value={`${stats?.completionRate ?? 0}%`}
+            icon="📈"
+            linkText="Suivre la progression"
+            internalLinkUrl="/admin/progress"
+          />
+          <AdminStatCard
+            title="Certificats délivrés"
+            value={stats?.certificatesIssued ?? 0}
+            icon="🏆"
+            linkText="Voir les certificats"
+            internalLinkUrl="/admin/certificates"
+          />
+        </div>
+
+        {/* Section 3 — Accès & monétisation */}
+        <h2 className="text-[10px] uppercase tracking-[0.4em] text-[#767676] font-bold mt-12 mb-4">
+          Accès & Premium
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <AdminStatCard
             title="Demandes en attente"
-            value={stats?.pendingRequests || 0}
+            value={stats?.pendingRequests ?? 0}
             icon="⌛"
             linkText="Voir les demandes"
             internalLinkUrl="/admin/access"
           />
           <AdminStatCard
-            title="Inscriptions Actives"
-            value={stats?.activeEnrollments || 0}
-            icon="🎓"
-            linkText="Gérer les étudiants"
-            internalLinkUrl="/admin/users"
-          />
-          <AdminStatCard
-            title="Certificats Délivrés"
-            value={stats?.certificatesIssued || 0}
-            icon="🏆"
-            linkText="Gérer les certificats"
-            linkUrl={`${DIRECTUS_URL}/admin/content/certificates`}
+            title="Inscriptions Premium"
+            value={stats?.premiumEnrollments ?? 0}
+            icon="💎"
+            linkText="Gérer les formations"
+            internalLinkUrl="/admin/courses"
           />
         </div>
 
@@ -94,6 +154,15 @@ export default function AdminDashboardPage() {
             </Link>
             <Link to="/admin/users" className="px-6 py-3 border border-[#d8d5ce] text-[#1a1a1a] text-[10px] uppercase font-bold tracking-widest hover:bg-[#faf9f6] transition-colors">
               Suivi des étudiants
+            </Link>
+            <Link to="/admin/progress" className="px-6 py-3 border border-[#d8d5ce] text-[#1a1a1a] text-[10px] uppercase font-bold tracking-widest hover:bg-[#faf9f6] transition-colors">
+              Suivi de progression
+            </Link>
+            <Link to="/admin/certificates" className="px-6 py-3 border border-[#d8d5ce] text-[#1a1a1a] text-[10px] uppercase font-bold tracking-widest hover:bg-[#faf9f6] transition-colors">
+              Certificats
+            </Link>
+            <Link to="/admin/access" className="px-6 py-3 border border-[#d8d5ce] text-[#1a1a1a] text-[10px] uppercase font-bold tracking-widest hover:bg-[#faf9f6] transition-colors">
+              Demandes d'accès
             </Link>
           </div>
         </div>

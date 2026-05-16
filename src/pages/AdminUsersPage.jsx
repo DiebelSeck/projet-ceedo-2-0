@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import SectionHeader from '../components/ui/SectionHeader';
@@ -9,6 +9,8 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedUserId, setExpandedUserId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     document.title = 'Gestion des Étudiants — Admin LMS';
@@ -32,6 +34,30 @@ export default function AdminUsersPage() {
     load();
   }, []);
 
+  const availableStatuses = useMemo(() => {
+    const set = new Set();
+    for (const u of users) {
+      for (const e of u.enrollments || []) {
+        if (e?.status) set.add(e.status);
+      }
+    }
+    return Array.from(set).sort();
+  }, [users]);
+
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return users.filter(u => {
+      if (statusFilter !== 'all') {
+        const hasStatus = (u.enrollments || []).some(e => e?.status === statusFilter);
+        if (!hasStatus) return false;
+      }
+      if (!q) return true;
+      const name = (u.name || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+  }, [users, search, statusFilter]);
+
   return (
     <main className="bg-[#faf9f6] min-h-screen">
       <div className="bg-white py-20 border-b border-[#d8d5ce]/30">
@@ -54,14 +80,39 @@ export default function AdminUsersPage() {
           </a>
         </div>
 
+        <div className="mb-6 flex gap-4 flex-wrap items-center">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher par nom ou email…"
+            className="w-full md:w-96 px-4 py-3 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
+          />
+          {availableStatuses.length > 0 && (
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-3 border border-[#d8d5ce] bg-white text-sm focus:outline-none focus:border-[#8b6914]"
+            >
+              <option value="all">Tous statuts</option>
+              {availableStatuses.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
+          <span className="text-[10px] uppercase tracking-widest text-[#767676] font-bold">
+            {filteredUsers.length} / {users.length} étudiants
+          </span>
+        </div>
+
         <div className="bg-white border border-[#d8d5ce] overflow-hidden">
           {loading ? (
             <div className="p-12 flex justify-center">
               <div className="w-8 h-8 border-4 border-[#8b6914]/20 border-t-[#8b6914] rounded-full animate-spin" />
             </div>
-          ) : users.length === 0 ? (
+          ) : filteredUsers.length === 0 ? (
             <div className="p-12 text-center text-[#767676] font-serif italic">
-              Aucun étudiant actif trouvé.
+              {users.length === 0 ? 'Aucun étudiant actif trouvé.' : 'Aucun résultat pour cette recherche.'}
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
@@ -75,7 +126,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => (
+                {filteredUsers.map(u => (
                   <React.Fragment key={u.id}>
                     <tr className="border-b border-[#e8e6e1] hover:bg-[#faf9f6]/50 transition-colors">
                       <td className="p-4">

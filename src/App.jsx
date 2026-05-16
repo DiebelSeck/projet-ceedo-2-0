@@ -37,6 +37,8 @@ import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminAccessPage from './pages/AdminAccessPage'
 import AdminCoursesPage from './pages/AdminCoursesPage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import AdminCertificatesPage from './pages/AdminCertificatesPage'
+import AdminProgressPage from './pages/AdminProgressPage'
 import RequireEditorialRole from './components/auth/RequireEditorialRole'
 
 export default function App() {
@@ -111,13 +113,29 @@ export default function App() {
               </RequireEditorialRole>
             } 
           />
-          <Route 
-            path="admin/users" 
+          <Route
+            path="admin/users"
             element={
               <RequireEditorialRole allowedRoles={['Admin', 'Editor']}>
                 <AdminUsersPage />
               </RequireEditorialRole>
-            } 
+            }
+          />
+          <Route
+            path="admin/progress"
+            element={
+              <RequireEditorialRole allowedRoles={['Admin', 'Editor']}>
+                <AdminProgressPage />
+              </RequireEditorialRole>
+            }
+          />
+          <Route
+            path="admin/certificates"
+            element={
+              <RequireEditorialRole allowedRoles={['Admin', 'Editor']}>
+                <AdminCertificatesPage />
+              </RequireEditorialRole>
+            }
           />
 
           {/* Editorial Area — Restricted to Editorial Roles */}

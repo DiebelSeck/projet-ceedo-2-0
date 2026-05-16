@@ -1719,34 +1719,128 @@ export const api = {
   },
 
   /**
-   * Level 25: Get Admin Stats
+   * Level 25 — Phase 25: Admin LMS KPIs.
+   *
+   * Returns a complete, null-safe stats object for the academic dashboard.
+   * Every sub-request is wrapped: if the policy denies one collection (e.g.
+   * the Editor role cannot count `directus_users`), that field falls back to
+   * 0 rather than blowing up the dashboard. No revenue/payment KPI is computed
+   * because no order/payment collection exists in the frontend API surface.
    */
   async getAdminStats() {
     const token = localStorage.getItem('directus_token');
     if (!token) throw new Error('Not authenticated');
-    
+
     const fetchCount = async (path) => {
-      const res = await fetch(`${DIRECTUS_URL}${path}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) return 0;
-      const json = await res.json();
-      return json?.meta?.filter_count || 0;
+      try {
+        const res = await fetch(`${DIRECTUS_URL}${path}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return 0;
+        const json = await res.json();
+        return Number(json?.meta?.filter_count) || 0;
+      } catch {
+        return 0;
+      }
     };
 
-    try {
-      const [totalCourses, pendingRequests, activeEnrollments, certificatesIssued] = await Promise.all([
-        fetchCount('/items/courses?limit=0&meta=filter_count'),
-        fetchCount('/items/course_access?filter[status][_eq]=pending&limit=0&meta=filter_count'),
-        fetchCount('/items/course_enrollments?filter[status][_eq]=active&limit=0&meta=filter_count'),
-        fetchCount('/items/certificates?limit=0&meta=filter_count')
-      ]);
+    const fetchItems = async (path) => {
+      try {
+        const res = await fetch(`${DIRECTUS_URL}${path}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return Array.isArray(json?.data) ? json.data : [];
+      } catch {
+        return [];
+      }
+    };
 
-      return { totalCourses, pendingRequests, activeEnrollments, certificatesIssued };
-    } catch (err) {
-      console.error('Admin stats error:', err);
-      return { totalCourses: 0, pendingRequests: 0, activeEnrollments: 0, certificatesIssued: 0 };
+    const settled = await Promise.allSettled([
+      // /users counts only authenticated Directus accounts visible to the policy.
+      fetchCount('/users?limit=0&meta=filter_count'),
+      fetchCount('/items/courses?limit=0&meta=filter_count'),
+      fetchCount('/items/courses?filter[status][_eq]=published&limit=0&meta=filter_count'),
+      fetchCount('/items/lessons?limit=0&meta=filter_count'),
+      fetchCount('/items/lesson_progress?filter[completed][_eq]=true&limit=0&meta=filter_count'),
+      fetchCount('/items/certificates?limit=0&meta=filter_count'),
+      fetchCount('/items/course_access?filter[status][_eq]=pending&limit=0&meta=filter_count'),
+      fetchItems('/items/course_enrollments?fields=id,user_id,course_id,progress_percentage,status&limit=-1'),
+      fetchItems('/items/courses?fields=id,is_paid&limit=-1'),
+    ]);
+
+    const pick = (i, fallback) => (settled[i].status === 'fulfilled' ? settled[i].value : fallback);
+
+    const totalStudents      = pick(0, 0);
+    const totalCourses       = pick(1, 0);
+    const publishedCourses   = pick(2, 0);
+    const totalLessons       = pick(3, 0);
+    const completedLessons   = pick(4, 0);
+    const certificatesIssued = pick(5, 0);
+    const pendingRequests    = pick(6, 0);
+    const enrollments        = pick(7, []);
+    const coursesMeta        = pick(8, []);
+
+    // Unique active learners and average progress derived client-side from
+    // the enrollment list. Defensive against `user_id`/`course_id` arriving
+    // either as a string id or as an expanded object.
+    const uniqueLearners = new Set();
+    let progressSum = 0;
+    let progressCount = 0;
+    for (const e of enrollments) {
+      const uid = typeof e?.user_id === 'object' ? e?.user_id?.id : e?.user_id;
+      if (uid) uniqueLearners.add(uid);
+      if (Number.isFinite(e?.progress_percentage)) {
+        progressSum += e.progress_percentage;
+        progressCount += 1;
+      }
     }
+    const activeStudents = uniqueLearners.size;
+    const completionRate = progressCount > 0
+      ? Math.round(progressSum / progressCount)
+      : 0;
+
+    const paidCourseIds = new Set(
+      (coursesMeta || []).filter(c => c?.is_paid).map(c => c?.id).filter(Boolean)
+    );
+    const premiumEnrollments = (enrollments || []).filter(e => {
+      const cid = typeof e?.course_id === 'object' ? e?.course_id?.id : e?.course_id;
+      return paidCourseIds.has(cid);
+    }).length;
+
+    return {
+      totalStudents,
+      activeStudents,
+      totalCourses,
+      publishedCourses,
+      totalLessons,
+      completedLessons,
+      completionRate,
+      certificatesIssued,
+      premiumEnrollments,
+      pendingRequests,
+    };
+  },
+
+  /**
+   * Admin: list issued certificates with user + course details.
+   * Read-only. Sorted by most recent first.
+   */
+  async getAdminCertificates() {
+    return authFetch(
+      '/items/certificates?fields=id,issued_at,certificate_code,certificate_url,course_id.id,course_id.title,course_id.slug,user_id.id,user_id.first_name,user_id.last_name,user_id.email&sort=-issued_at&limit=-1'
+    );
+  },
+
+  /**
+   * Admin: course enrollments with progress, user, and course details.
+   * Read-only feed for the progress tracking page.
+   */
+  async getAdminProgressOverview() {
+    return authFetch(
+      '/items/course_enrollments?fields=id,status,progress_percentage,started_at,completed_at,course_id.id,course_id.title,course_id.slug,course_id.is_paid,user_id.id,user_id.first_name,user_id.last_name,user_id.email&sort=-started_at&limit=-1'
+    );
   },
 
   /**
