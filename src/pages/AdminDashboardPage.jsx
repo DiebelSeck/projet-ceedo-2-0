@@ -61,7 +61,7 @@ export default function AdminDashboardPage() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <AdminStatCard
-            title="Étudiants inscrits"
+            title="Comptes utilisateurs"
             value={stats?.totalStudents ?? 0}
             icon="👥"
             linkText="Voir les étudiants"
@@ -110,7 +110,7 @@ export default function AdminDashboardPage() {
             internalLinkUrl="/admin/progress"
           />
           <AdminStatCard
-            title="Taux de complétion"
+            title="Progression moyenne"
             value={`${stats?.completionRate ?? 0}%`}
             icon="📈"
             linkText="Suivre la progression"

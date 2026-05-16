@@ -30,7 +30,7 @@ export default function EditorPanelPage() {
   const loadArticles = async () => {
     setLoading(true);
     try {
-      const data = await api.getArticles(statusFilter);
+      const data = await api.getEditorialArticles(statusFilter);
       setArticles(data);
     } catch (err) {
       setError(err.message);

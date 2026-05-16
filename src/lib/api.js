@@ -978,7 +978,7 @@ export const api = {
     return authFetch(`/items/articles/${id}?fields=id,status,title,slug,excerpt,content,community,category,meta_title,meta_description,featured_image,editor_notes,revision_count,last_editorial_action,reviewed_at,approved_at,published_at,Author.id,Author.first_name,Author.last_name,reviewed_by.first_name,reviewed_by.last_name,approved_by.first_name,approved_by.last_name,published_by.first_name,published_by.last_name`);
   },
 
-  async getArticles(status = 'review') {
+  async getEditorialArticles(status = 'review') {
     const token = getToken();
     if (!token) throw new Error('Not authenticated');
     const url = new URL(`${DIRECTUS_URL}/items/articles`);
