@@ -22,7 +22,86 @@ const SORT_FIELDS = [
   { value: 'enrollmentDate',  label: 'Date d’inscription' },
   { value: 'pendingCerts',    label: 'Certificats en attente' },
   { value: 'certificateCount',label: 'Certificats délivrés' },
+  { value: 'successScore',    label: 'Score réussite' },
 ];
+
+const INTEL_FILTERS = [
+  { key: 'risk',     label: 'À risque' },
+  { key: 'inactive', label: 'Inactifs' },
+  { key: 'top',      label: 'Top performers' },
+  { key: 'slow',     label: 'Progression lente' },
+  { key: 'pending',  label: 'Certificats en attente' },
+];
+
+const BADGE_META = {
+  risk:    { label: 'À risque',          className: 'bg-red-50 text-red-700 border-red-200' },
+  inactive:{ label: 'Inactif',           className: 'bg-stone-100 text-stone-600 border-stone-300' },
+  top:     { label: 'Top performer',     className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  slow:    { label: 'Progression lente', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  pending: { label: 'Cert. en attente',  className: 'bg-blue-50 text-blue-700 border-blue-200' },
+};
+
+const SLOW_COMPLETION_DAYS = 60;
+
+/**
+ * Derive student success signals from already-loaded learning overview fields.
+ * Pure frontend — no schema assumptions, no new API calls.
+ */
+function deriveSuccess(u) {
+  const avg = Number.isFinite(u.averageProgress) ? u.averageProgress : 0;
+  const completed = Number.isFinite(u.completed_count) ? u.completed_count : 0;
+  const pending = Number.isFinite(u.pendingCertCount) ? u.pendingCertCount : 0;
+  const enrollments = Array.isArray(u.enrollments) ? u.enrollments : [];
+  const certificates = Array.isArray(u.certificates) ? u.certificates : [];
+  const avgCompletionDays = Number.isFinite(u.averageCompletionDays) ? u.averageCompletionDays : null;
+  const active30d = Boolean(u.active30d);
+
+  // Has at least one in-progress enrollment (started but not completed)
+  const hasInProgress = enrollments.some(e => e && e.started_at && !e.completed_at);
+
+  const flags = {
+    inactive: !active30d && enrollments.length > 0,
+    risk:     !active30d && hasInProgress && avg < 50 && completed === 0,
+    top:      completed >= 2 || certificates.length >= 2 || (completed >= 1 && avg >= 90),
+    slow:     avgCompletionDays != null && avgCompletionDays > SLOW_COMPLETION_DAYS,
+    pending:  pending > 0,
+  };
+
+  // Completion velocity: 'fast' | 'normal' | 'slow' | null
+  let completionVelocity = null;
+  if (avgCompletionDays != null) {
+    if (avgCompletionDays <= 14)      completionVelocity = 'fast';
+    else if (avgCompletionDays <= 45) completionVelocity = 'normal';
+    else                               completionVelocity = 'slow';
+  }
+
+  // Estimated days to finish remaining work, based on user's own velocity.
+  // Uses averageCompletionDays as a benchmark scaled by remaining progress.
+  let estimatedCompletionDays = null;
+  if (avgCompletionDays != null && avg > 0 && avg < 100) {
+    const remaining = (100 - avg) / 100;
+    estimatedCompletionDays = Math.round(avgCompletionDays * remaining);
+  }
+
+  // Weighted score 0–100 (clamped). Higher = healthier success profile.
+  let score = 50;
+  score += Math.round(avg * 0.3);                       // up to +30
+  if (flags.top)      score += 20;
+  if (active30d)      score += 10;
+  if (flags.pending)  score += 5;                       // close to a certificate
+  if (flags.inactive) score -= 15;
+  if (flags.risk)     score -= 25;
+  if (flags.slow)     score -= 10;
+  if (completed === 0 && enrollments.length > 0 && avg === 0) score -= 10; // never started
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    flags,
+    completionVelocity,
+    estimatedCompletionDays,
+    successScore: score,
+  };
+}
 
 // Comparator: nulls/NaN always sort last regardless of direction.
 function compareWithNullsLast(av, bv, dir) {
@@ -47,6 +126,7 @@ function getSortValue(u, key) {
     case 'enrollmentDate':   return u.enrollmentDate ? Date.parse(u.enrollmentDate) : null;
     case 'pendingCerts':     return Number.isFinite(u.pendingCertCount) ? u.pendingCertCount : null;
     case 'certificateCount': return Array.isArray(u.certificates) ? u.certificates.length : null;
+    case 'successScore':     return Number.isFinite(u._success?.successScore) ? u._success.successScore : null;
     default:                 return null;
   }
 }
@@ -65,6 +145,7 @@ export default function AdminUsersPage() {
   const [progressMax, setProgressMax] = useState('');
   const [sortBy, setSortBy] = useState('lastActivity');
   const [sortDir, setSortDir] = useState('desc');
+  const [intelFilter, setIntelFilter] = useState(null);
 
   useEffect(() => {
     document.title = 'Gestion des Étudiants — Admin LMS';
@@ -91,6 +172,28 @@ export default function AdminUsersPage() {
     load();
   }, []);
 
+  const enrichedUsers = useMemo(
+    () => users.map(u => ({ ...u, _success: deriveSuccess(u) })),
+    [users]
+  );
+
+  const successSummary = useMemo(() => {
+    const c = { risk: 0, inactive: 0, top: 0, slow: 0, pending: 0, totalScore: 0 };
+    for (const u of enrichedUsers) {
+      const f = u._success.flags;
+      if (f.risk)     c.risk     += 1;
+      if (f.inactive) c.inactive += 1;
+      if (f.top)      c.top      += 1;
+      if (f.slow)     c.slow     += 1;
+      if (f.pending)  c.pending  += 1;
+      c.totalScore += u._success.successScore;
+    }
+    const averageScore = enrichedUsers.length > 0
+      ? Math.round(c.totalScore / enrichedUsers.length)
+      : 0;
+    return { ...c, averageScore };
+  }, [enrichedUsers]);
+
   const availableStatuses = useMemo(() => {
     const set = new Set();
     for (const u of users) {
@@ -107,6 +210,8 @@ export default function AdminUsersPage() {
     const maxN = progressMax === '' ? null : Number(progressMax);
 
     const passes = (u) => {
+      // Intelligence filter (composes with the rest)
+      if (intelFilter && !u._success?.flags?.[intelFilter]) return false;
       // Enrollment status (any-of)
       if (statusFilter !== 'all') {
         const hasStatus = (u.enrollments || []).some(e => e?.status === statusFilter);
@@ -139,7 +244,7 @@ export default function AdminUsersPage() {
       return false;
     };
 
-    const list = users.filter(passes);
+    const list = enrichedUsers.filter(passes);
 
     const sorted = [...list].sort((a, b) =>
       compareWithNullsLast(getSortValue(a, sortBy), getSortValue(b, sortBy), sortDir)
@@ -147,10 +252,21 @@ export default function AdminUsersPage() {
 
     return sorted;
   }, [
-    users, search, statusFilter,
+    enrichedUsers, search, statusFilter,
     active30dFilter, pendingCertFilter, issuedCertFilter,
-    progressMin, progressMax, sortBy, sortDir,
+    progressMin, progressMax, sortBy, sortDir, intelFilter,
   ]);
+
+  // Alerts: sort by inverse score (lowest score = highest risk), but only flagged users
+  const topAlerts = useMemo(() => {
+    return enrichedUsers
+      .filter(u => {
+        const f = u._success.flags;
+        return f.risk || f.inactive || f.slow;
+      })
+      .sort((a, b) => a._success.successScore - b._success.successScore)
+      .slice(0, 5);
+  }, [enrichedUsers]);
 
   function resetFilters() {
     setSearch('');
@@ -162,6 +278,28 @@ export default function AdminUsersPage() {
     setProgressMax('');
     setSortBy('lastActivity');
     setSortDir('desc');
+    setIntelFilter(null);
+  }
+
+  function renderSuccessBadges(intel) {
+    const order = ['risk', 'inactive', 'slow', 'pending', 'top'];
+    const keys = order.filter(k => intel?.flags?.[k]);
+    if (keys.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-1 mt-2">
+        {keys.map(k => {
+          const meta = BADGE_META[k];
+          return (
+            <span
+              key={k}
+              className={`inline-block px-2 py-0.5 text-[9px] uppercase tracking-widest font-bold border ${meta.className}`}
+            >
+              {meta.label}
+            </span>
+          );
+        })}
+      </div>
+    );
   }
 
   function handleExportCSV() {
@@ -220,6 +358,132 @@ export default function AdminUsersPage() {
             </button>
           </div>
         )}
+
+        {/* Student success intelligence — summary */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+          {[
+            { key: 'risk',     label: 'Étudiants à risque', value: successSummary.risk,     accent: 'text-red-700' },
+            { key: 'inactive', label: 'Inactifs',           value: successSummary.inactive, accent: 'text-stone-600' },
+            { key: 'top',      label: 'Top performers',     value: successSummary.top,      accent: 'text-emerald-700' },
+            { key: 'pending',  label: 'Certificats en attente', value: successSummary.pending, accent: 'text-blue-700' },
+            { key: 'score',    label: 'Score moyen réussite',   value: `${successSummary.averageScore}`, accent: 'text-[#8b6914]' },
+          ].map(card => {
+            const isFilter = card.key !== 'score';
+            const active = isFilter && intelFilter === card.key;
+            const Wrapper = isFilter ? 'button' : 'div';
+            const wrapperProps = isFilter
+              ? {
+                  type: 'button',
+                  onClick: () => setIntelFilter(active ? null : card.key),
+                  className: `text-left bg-white border p-5 transition-colors ${
+                    active ? 'border-[#1a1a1a] ring-2 ring-[#1a1a1a]/10' : 'border-[#d8d5ce] hover:border-[#8b6914]'
+                  }`,
+                }
+              : { className: 'bg-white border border-[#d8d5ce] p-5' };
+            return (
+              <Wrapper key={card.key} {...wrapperProps}>
+                <div className="text-[10px] uppercase tracking-widest text-[#767676] font-bold">{card.label}</div>
+                <div className={`mt-2 text-3xl font-serif font-bold ${card.accent}`}>{card.value}</div>
+                {isFilter && (
+                  <div className="mt-1 text-[10px] uppercase tracking-widest text-[#767676]">
+                    {active ? 'Filtre actif' : 'Cliquer pour filtrer'}
+                  </div>
+                )}
+              </Wrapper>
+            );
+          })}
+        </div>
+
+        {/* Compact alerts — student success */}
+        <div className="bg-white border border-[#d8d5ce] p-5 mb-8">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-[11px] uppercase tracking-widest font-bold text-[#1a1a1a]">
+              Alertes — réussite étudiante
+            </h2>
+            <span className="text-[10px] uppercase tracking-widest text-[#767676]">
+              {topAlerts.length === 0 ? 'Aucune alerte' : `Top ${topAlerts.length}`}
+            </span>
+          </div>
+          {topAlerts.length === 0 ? (
+            <p className="text-[12px] text-[#767676] italic">
+              Aucun signal de réussite préoccupant détecté pour les étudiants chargés.
+            </p>
+          ) : (
+            <ul className="divide-y divide-[#e8e6e1]">
+              {topAlerts.map(u => {
+                const order = ['risk', 'inactive', 'slow', 'pending'];
+                const flags = order.filter(k => u._success.flags[k]);
+                return (
+                  <li key={u.id} className="py-2 flex flex-wrap items-center gap-3">
+                    <Link
+                      to={`/admin/users/${u.id}`}
+                      className="font-serif font-bold text-[#1a1a1a] text-sm flex-1 min-w-[180px] hover:text-[#8b6914] hover:underline"
+                    >
+                      {u.name || u.email || 'Sans nom'}
+                      <span className="font-normal text-[#767676] text-[11px]"> — score {u._success.successScore}/100</span>
+                    </Link>
+                    <div className="flex flex-wrap gap-1">
+                      {flags.map(k => {
+                        const meta = BADGE_META[k];
+                        return (
+                          <span
+                            key={k}
+                            className={`inline-block px-2 py-0.5 text-[9px] uppercase tracking-widest font-bold border ${meta.className}`}
+                          >
+                            {meta.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <span className="text-[10px] uppercase tracking-widest text-[#767676]">
+                      {u._success.estimatedCompletionDays != null
+                        ? `~${u._success.estimatedCompletionDays}j restants`
+                        : 'Aucune estimation'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Intelligence filter row */}
+        <div className="mb-4">
+          <div className="text-[10px] uppercase tracking-widest text-[#767676] font-bold mb-2">
+            Intelligence réussite
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setIntelFilter(null)}
+              className={`px-4 py-2 text-[10px] uppercase tracking-widest font-bold border transition-colors ${
+                intelFilter === null
+                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
+                  : 'bg-white text-[#4a4a4a] border-[#d8d5ce] hover:border-[#8b6914] hover:text-[#8b6914]'
+              }`}
+            >
+              Aucun
+            </button>
+            {INTEL_FILTERS.map(f => {
+              const active = intelFilter === f.key;
+              const count = successSummary[f.key] ?? 0;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setIntelFilter(active ? null : f.key)}
+                  className={`px-4 py-2 text-[10px] uppercase tracking-widest font-bold border transition-colors ${
+                    active
+                      ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
+                      : 'bg-white text-[#4a4a4a] border-[#d8d5ce] hover:border-[#8b6914] hover:text-[#8b6914]'
+                  }`}
+                >
+                  {f.label} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="mb-4 flex gap-4 flex-wrap items-center">
           <input
@@ -381,6 +645,7 @@ export default function AdminUsersPage() {
                           {u.name || 'Sans nom'}
                         </Link>
                         <div className="text-[11px] text-[#767676] mt-1">{u.email}</div>
+                        {renderSuccessBadges(u._success)}
                       </td>
                       <td className="p-4 text-[11px] text-[#4a4a4a]">{formatDate(u.enrollmentDate)}</td>
                       <td className="p-4 text-[11px] text-[#4a4a4a]">{formatDate(u.lastActivity)}</td>
