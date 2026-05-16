@@ -989,9 +989,13 @@ export const api = {
     }
 
     url.searchParams.set('filter', JSON.stringify(filter));
+    // NOTE: `revision_count` and `last_editorial_action` were removed from this
+    // fields list because the editorial role's Directus policy denies read on
+    // those columns, which causes the whole `/items/articles` request to 403.
+    // `EditorPanelPage.jsx` already renders them null-safe (`|| 0`, `|| '—'`).
     url.searchParams.set(
       'fields',
-      'id,title,slug,excerpt,status,date_created,date_updated,revision_count,last_editorial_action,community.title,category.name,featured_image,Author.first_name,Author.last_name'
+      'id,title,slug,excerpt,status,date_created,date_updated,community.title,category.name,featured_image,Author.first_name,Author.last_name'
     );
     url.searchParams.set('sort', '-date_updated');
     url.searchParams.set('limit', '100');
