@@ -145,7 +145,12 @@ export default function AdminUsersPage() {
                   <React.Fragment key={u.id}>
                     <tr className="border-b border-[#e8e6e1] hover:bg-[#faf9f6]/50 transition-colors">
                       <td className="p-4">
-                        <div className="font-bold text-[#1a1a1a] text-sm">{u.name || 'Sans nom'}</div>
+                        <Link
+                          to={`/admin/users/${u.id}`}
+                          className="font-bold text-[#1a1a1a] text-sm hover:text-[#8b6914] hover:underline"
+                        >
+                          {u.name || 'Sans nom'}
+                        </Link>
                         <div className="text-[11px] text-[#767676] mt-1">{u.email}</div>
                       </td>
                       <td className="p-4 text-[11px] text-[#4a4a4a]">{formatDate(u.enrollmentDate)}</td>

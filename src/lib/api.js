@@ -2016,5 +2016,86 @@ export const api = {
     }
 
     return Array.from(activeUsers.values());
+  },
+
+  /**
+   * Admin: Get a single student's detail (read-only).
+   * Fetches user record, their enrollments, and their certificates in parallel
+   * with Promise.allSettled — any sub-failure (e.g. policy denial on one
+   * collection) yields a partial result rather than throwing.
+   *
+   * Returns:
+   *   { user, enrollments, certificates, derived, errors }
+   *   where `derived` contains the same per-user metrics as the list view
+   *   and `errors` is an array of { collection, message } for failed fetches.
+   */
+  async getAdminStudentById(userId) {
+    if (!userId) throw new Error('getAdminStudentById: missing userId');
+
+    const settled = await Promise.allSettled([
+      authFetch(`/items/directus_users?filter[id][_eq]=${userId}&fields=id,first_name,last_name,email&limit=1`),
+      authFetch(`/items/course_enrollments?filter[user_id][_eq]=${userId}&fields=id,status,progress_percentage,started_at,completed_at,course_id.id,course_id.title,course_id.slug,course_id.is_paid&sort=-started_at&limit=-1`),
+      authFetch(`/items/certificates?filter[user_id][_eq]=${userId}&fields=id,issued_at,certificate_code,certificate_url,course_id.id,course_id.title,course_id.slug&sort=-issued_at&limit=-1`),
+    ]);
+
+    const errors = [];
+    const pickList = (i, name) => {
+      const s = settled[i];
+      if (s.status === 'fulfilled') return Array.isArray(s.value) ? s.value : [];
+      errors.push({ collection: name, message: s.reason?.message || 'request failed' });
+      return [];
+    };
+
+    const userRows = pickList(0, 'directus_users');
+    const enrollments = pickList(1, 'course_enrollments');
+    const certificates = pickList(2, 'certificates');
+
+    const user = userRows[0] || null;
+
+    // Derive metrics — identical logic to getAdminUsersLearningOverview.
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const activityCutoff = Date.now() - THIRTY_DAYS_MS;
+
+    let earliestStart = Infinity;
+    let latestActivity = 0;
+    let progressSum = 0;
+    let progressCount = 0;
+    let completedCount = 0;
+    const completionDurationsMs = [];
+
+    for (const e of enrollments) {
+      if (e?.status === 'completed') completedCount += 1;
+      const tStart = e?.started_at   ? Date.parse(e.started_at)   : NaN;
+      const tEnd   = e?.completed_at ? Date.parse(e.completed_at) : NaN;
+      if (Number.isFinite(tStart)) {
+        if (tStart < earliestStart) earliestStart = tStart;
+        if (tStart > latestActivity) latestActivity = tStart;
+      }
+      if (Number.isFinite(tEnd)) {
+        if (tEnd > latestActivity) latestActivity = tEnd;
+        if (e.status === 'completed' && Number.isFinite(tStart) && tEnd >= tStart) {
+          completionDurationsMs.push(tEnd - tStart);
+        }
+      }
+      if (Number.isFinite(e?.progress_percentage)) {
+        progressSum += e.progress_percentage;
+        progressCount += 1;
+      }
+    }
+
+    const derived = {
+      enrollmentDate: Number.isFinite(earliestStart) ? new Date(earliestStart).toISOString() : null,
+      lastActivity: latestActivity > 0 ? new Date(latestActivity).toISOString() : null,
+      active30d: latestActivity > 0 && latestActivity >= activityCutoff,
+      averageProgress: progressCount > 0 ? Math.round(progressSum / progressCount) : 0,
+      averageCompletionDays: completionDurationsMs.length > 0
+        ? Math.round(completionDurationsMs.reduce((a, b) => a + b, 0) / completionDurationsMs.length / (24 * 60 * 60 * 1000))
+        : null,
+      completedCount,
+      enrollmentCount: enrollments.length,
+      certificateCount: certificates.length,
+    };
+
+    return { user, enrollments, certificates, derived, errors };
   }
 };
