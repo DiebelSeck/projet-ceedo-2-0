@@ -25,7 +25,9 @@ export default function RequireEditorialRole({ children, allowedRoles = [] }) {
   }
 
   const userRole = user?.role?.name || '';
-  const isAuthorized = allowedRoles.length === 0 || allowedRoles.includes(userRole);
+  const roleAliases = { Administrator: 'Admin' };
+  const normalizedUserRole = roleAliases[userRole] || userRole;
+  const isAuthorized = allowedRoles.length === 0 || allowedRoles.includes(normalizedUserRole);
 
   if (!isAuthorized) {
     return (
@@ -55,3 +57,5 @@ export default function RequireEditorialRole({ children, allowedRoles = [] }) {
 
   return children;
 }
+
+
