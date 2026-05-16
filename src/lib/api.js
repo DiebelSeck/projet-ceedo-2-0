@@ -1940,7 +1940,7 @@ export const api = {
    */
   async getAdminUsersLearningOverview() {
     const [users, enrollments, certificates] = await Promise.all([
-      authFetch('/items/directus_users?fields=id,first_name,last_name,email&limit=-1'),
+      authFetch('/users?fields=id,first_name,last_name,email&limit=-1'),
       authFetch('/items/course_enrollments?fields=id,user_id,course_id.title,status,progress_percentage,started_at,completed_at&limit=-1'),
       authFetch('/items/certificates?fields=id,user_id,course_id.title&limit=-1')
     ]);

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import { downloadCSV } from '../lib/csvExport';
 import SectionHeader from '../components/ui/SectionHeader';
 
 const DIRECTUS_URL = import.meta.env.VITE_DIRECTUS_URL || 'https://admin.projetceedo20.org';
@@ -163,6 +164,25 @@ export default function AdminUsersPage() {
     setSortDir('desc');
   }
 
+  function handleExportCSV() {
+    if (filteredUsers.length === 0) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const columns = [
+      { header: 'Nom',                          value: u => u.name || '' },
+      { header: 'Email',                        value: u => u.email || '' },
+      { header: 'Inscriptions',                 value: u => (u.enrollments?.length ?? 0) },
+      { header: 'Complétées',                   value: u => (u.completed_count ?? 0) },
+      { header: 'Progression moyenne (%)',      value: u => Number.isFinite(u.averageProgress) ? u.averageProgress : 0 },
+      { header: 'Actif (30j)',                  value: u => u.active30d ? 'Oui' : 'Non' },
+      { header: 'Dernière activité',            value: u => (u.lastActivity   ? String(u.lastActivity).slice(0, 10)   : '') },
+      { header: 'Date inscription',             value: u => (u.enrollmentDate ? String(u.enrollmentDate).slice(0, 10) : '') },
+      { header: 'Certificats délivrés',         value: u => (u.certificates?.length ?? 0) },
+      { header: 'Certificats en attente',       value: u => (u.pendingCertCount ?? 0) },
+      { header: 'Durée moyenne complétion (j)', value: u => (u.averageCompletionDays != null ? u.averageCompletionDays : '') },
+    ];
+    downloadCSV(filteredUsers, `ceedo-lms-students-${today}.csv`, columns);
+  }
+
   return (
     <main className="bg-[#faf9f6] min-h-screen">
       <div className="bg-white py-20 border-b border-[#d8d5ce]/30">
@@ -308,6 +328,15 @@ export default function AdminUsersPage() {
             className="px-4 py-2 text-[10px] uppercase tracking-widest font-bold text-[#8b6914] border border-[#8b6914]/40 hover:bg-[#8b6914]/5"
           >
             Réinitialiser
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            disabled={filteredUsers.length === 0}
+            className="px-4 py-2 text-[10px] uppercase tracking-widest font-bold text-white bg-[#1a1a1a] hover:bg-[#8b6914] disabled:bg-[#d8d5ce] disabled:text-[#767676] disabled:cursor-not-allowed transition-colors"
+            title={filteredUsers.length === 0 ? 'Aucun étudiant à exporter' : 'Télécharger la sélection courante en CSV'}
+          >
+            Exporter CSV
           </button>
           <span className="text-[10px] uppercase tracking-widest text-[#767676] font-bold ml-auto">
             {filteredUsers.length} / {users.length} étudiants
