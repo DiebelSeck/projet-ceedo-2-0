@@ -235,7 +235,17 @@ export default function AdminStudentDetailPage() {
         </div>
 
         {/* Certificates */}
-        <h2 className="text-[10px] uppercase tracking-[0.4em] text-[#767676] font-bold mb-4">Certificats</h2>
+        <div className="flex items-end justify-between mb-4 gap-4 flex-wrap">
+          <h2 className="text-[10px] uppercase tracking-[0.4em] text-[#767676] font-bold">Certificats</h2>
+          {user?.id ? (
+            <Link
+              to={`/admin/certificates?student=${user.id}`}
+              className="text-[10px] uppercase tracking-widest font-bold text-[#8b6914] hover:underline"
+            >
+              Voir tous les certificats →
+            </Link>
+          ) : null}
+        </div>
         <div className="bg-white border border-[#d8d5ce] overflow-x-auto">
           {certificates.length === 0 ? (
             <div className="p-8 text-center text-[#767676] font-serif italic">Aucun certificat délivré.</div>
