@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import SectionHeader from '../components/ui/SectionHeader';
@@ -106,6 +106,35 @@ export default function AdminStudentDetailPage() {
     ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Utilisateur sans nom'
     : 'Utilisateur introuvable';
 
+  // Certificate intelligence — derived only from already-fetched data.
+  // No new API calls. Status is one of:
+  //   'delivered'  — a certificate row exists for the enrollment's course
+  //   'eligible'   — course is fully completed but no certificate yet
+  //   'ineligible' — anything else
+  const certifiedCourseIds = useMemo(
+    () => new Set(certificates.map(c => c.course_id?.id).filter(Boolean)),
+    [certificates],
+  );
+
+  const getCertStatus = (enrollment) => {
+    const courseId = enrollment?.course_id?.id;
+    if (courseId && certifiedCourseIds.has(courseId)) return 'delivered';
+    const pct = Number.isFinite(enrollment?.progress_percentage) ? enrollment.progress_percentage : 0;
+    if (enrollment?.status === 'completed' && pct === 100) return 'eligible';
+    return 'ineligible';
+  };
+
+  const pendingCertCount = useMemo(() => {
+    let n = 0;
+    for (const e of enrollments) {
+      const courseId = e?.course_id?.id;
+      if (courseId && certifiedCourseIds.has(courseId)) continue;
+      const pct = Number.isFinite(e?.progress_percentage) ? e.progress_percentage : 0;
+      if (e?.status === 'completed' && pct === 100) n += 1;
+    }
+    return n;
+  }, [enrollments, certifiedCourseIds]);
+
   return (
     <main className="bg-[#faf9f6] min-h-screen">
       <div className="bg-white py-20 border-b border-[#d8d5ce]/30">
@@ -173,12 +202,13 @@ export default function AdminStudentDetailPage() {
 
         {/* KPI row */}
         <h2 className="text-[10px] uppercase tracking-[0.4em] text-[#767676] font-bold mb-4">Métriques</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
           <StatTile label="Inscriptions" value={derived.enrollmentCount ?? 0} />
           <StatTile label="Complétées" value={derived.completedCount ?? 0} />
           <StatTile label="Progression moy." value={`${derived.averageProgress ?? 0}%`} />
           <StatTile label="Durée moy." value={derived.averageCompletionDays != null ? `${derived.averageCompletionDays} j` : '—'} />
           <StatTile label="Certificats" value={derived.certificateCount ?? 0} />
+          <StatTile label="En attente" value={pendingCertCount} />
         </div>
 
         {/* Enrollments */}
@@ -196,12 +226,15 @@ export default function AdminStudentDetailPage() {
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Durée</th>
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Progression</th>
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Statut</th>
+                  <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Certificat</th>
+                  <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {enrollments.map(e => {
                   const pct = Number.isFinite(e.progress_percentage) ? e.progress_percentage : 0;
                   const meta = STATUS_LABEL[e.status] || { label: e.status || '—', className: 'bg-gray-100 text-gray-700 border-gray-200' };
+                  const certStatus = getCertStatus(e);
                   return (
                     <tr key={e.id} className="border-b border-[#e8e6e1] hover:bg-[#faf9f6]/50 transition-colors">
                       <td className="p-4 text-sm font-serif text-[#1a1a1a]">
@@ -225,6 +258,36 @@ export default function AdminStudentDetailPage() {
                         <span className={`inline-block px-2 py-1 text-[9px] uppercase tracking-widest font-bold border ${meta.className}`}>
                           {meta.label}
                         </span>
+                      </td>
+                      <td className="p-4">
+                        {certStatus === 'delivered' ? (
+                          <span className="inline-block px-2 py-1 text-[9px] uppercase tracking-widest font-bold border bg-green-50 text-green-700 border-green-200">
+                            Délivré
+                          </span>
+                        ) : certStatus === 'eligible' ? (
+                          <span className="inline-block px-2 py-1 text-[9px] uppercase tracking-widest font-bold border bg-yellow-50 text-yellow-700 border-yellow-200">
+                            Éligible
+                          </span>
+                        ) : (
+                          <span className="inline-block px-2 py-1 text-[9px] uppercase tracking-widest font-bold border bg-gray-100 text-gray-600 border-gray-200">
+                            Non éligible
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        {certStatus === 'eligible' ? (
+                          <button
+                            type="button"
+                            disabled={true}
+                            aria-disabled="true"
+                            title="Disponible dans une prochaine phase"
+                            className="px-3 py-2 text-[9px] uppercase tracking-widest font-bold border border-[#d8d5ce] text-[#a3a3a3] bg-[#faf9f6] cursor-not-allowed"
+                          >
+                            Délivrance manuelle (bientôt)
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-[#767676]">—</span>
+                        )}
                       </td>
                     </tr>
                   );
