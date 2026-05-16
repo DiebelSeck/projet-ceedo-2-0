@@ -9,7 +9,7 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [authorDropdownOpen, setAuthorDropdownOpen] = useState(false)
   const [explorerOpen, setExplorerOpen] = useState(false)
-  const { isAuthenticated } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const location = useLocation()
 
   useEffect(() => {
