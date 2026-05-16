@@ -1317,6 +1317,10 @@ export const api = {
   async getCourseBySlug(slug) {
     const url = new URL(`${DIRECTUS_URL}/items/courses`);
     url.searchParams.set('filter', JSON.stringify({ slug: { _eq: slug }, status: { _eq: 'published' } }));
+    // Note: we keep `modules.lessons.*` as a hint in case the inverse alias
+    // `course_modules.lessons` exists, but we ALSO do a follow-up fetch below
+    // to cover the case where it doesn't (the schema only guarantees the M2O
+    // `lessons.module → course_modules`, the inverse alias may not be set up).
     url.searchParams.set('fields', [
       '*',
       'instructor.first_name', 'instructor.last_name', 'instructor.description', 'instructor.avatar',
@@ -1336,6 +1340,48 @@ export const api = {
     // Ensure modules are sorted by order
     if (course.modules) {
       course.modules.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      // Backfill lessons if the embedded alias `course_modules.lessons` did not
+      // resolve (most common case: the inverse alias was never generated when
+      // the M2O `lessons.module` was created). We query lessons by `module._in`
+      // and group client-side.
+      const moduleIds = course.modules.map(m => m.id).filter(Boolean);
+      const needsBackfill = moduleIds.length > 0 &&
+        course.modules.some(m => !Array.isArray(m.lessons) || m.lessons.length === 0);
+
+      if (needsBackfill) {
+        try {
+          const lessonsUrl = new URL(`${DIRECTUS_URL}/items/lessons`);
+          lessonsUrl.searchParams.set('filter', JSON.stringify({
+            module: { _in: moduleIds },
+            status: { _eq: 'published' },
+          }));
+          lessonsUrl.searchParams.set('fields', 'id,title,slug,status,module,is_free_preview,order');
+          lessonsUrl.searchParams.set('sort', 'order');
+          lessonsUrl.searchParams.set('limit', '-1');
+
+          const lessonsRes = await fetch(lessonsUrl);
+          const lessonsJson = await lessonsRes.json();
+          const allLessons = lessonsJson?.data || [];
+
+          // Group by module UUID. `lesson.module` may be a string id or an
+          // object — defensive on both shapes.
+          const byModule = new Map();
+          for (const l of allLessons) {
+            const mid = typeof l.module === 'object' ? l.module?.id : l.module;
+            if (!mid) continue;
+            if (!byModule.has(mid)) byModule.set(mid, []);
+            byModule.get(mid).push(l);
+          }
+
+          course.modules = course.modules.map(m => ({
+            ...m,
+            lessons: byModule.get(m.id) || m.lessons || [],
+          }));
+        } catch (err) {
+          console.warn('getCourseBySlug: lessons backfill failed', err?.message);
+        }
+      }
     }
     return course;
   },
@@ -1408,20 +1454,33 @@ export const api = {
    * Get full progress data for a specific course:
    * enrollment record + per-lesson completion status.
    *
-   * Resilient: any of the three sub-requests may 403 if the user's policy
-   * does not grant read on that collection. We treat partial failure as
-   * "no data available" rather than blowing up the whole page.
+   * `preloadedCourse` (optional): when the caller already has a fully-fetched
+   * course (e.g. from `getCourseBySlug`, which hits the public endpoint), pass
+   * it here to skip the redundant authenticated fetch on `/items/courses/{id}`.
+   * That fetch can 403 if the Authenticated policy doesn't grant `courses.read`,
+   * and was the root cause of progress not loading on premium courses.
+   *
+   * Resilient: any sub-request may fail; partial failure → `null` for that
+   * piece of data rather than blowing up the whole page.
    */
-  async getCourseProgress(courseId) {
-    const settled = await Promise.allSettled([
+  async getCourseProgress(courseId, preloadedCourse) {
+    const requests = [
       authFetch(`/items/course_enrollments?filter[course_id][_eq]=${courseId}&filter[user_id][_eq]=$CURRENT_USER&limit=1`),
       authFetch(`/items/lesson_progress?filter[user_id][_eq]=$CURRENT_USER&fields=lesson_id,completed,completed_at`),
-      authFetch(`/items/courses/${courseId}?fields=id,title,modules.id,modules.title,modules.order,modules.lessons.id,modules.lessons.title,modules.lessons.order`),
-    ]);
+    ];
+    if (!preloadedCourse) {
+      requests.push(
+        authFetch(`/items/courses/${courseId}?fields=id,title,modules.id,modules.title,modules.order,modules.lessons.id,modules.lessons.title,modules.lessons.order`)
+      );
+    }
+
+    const settled = await Promise.allSettled(requests);
 
     const enrollments        = settled[0].status === 'fulfilled' ? settled[0].value : null;
     const lessonProgressData = settled[1].status === 'fulfilled' ? settled[1].value : null;
-    const course             = settled[2].status === 'fulfilled' ? settled[2].value : null;
+    const course = preloadedCourse
+      ? preloadedCourse
+      : (settled[2]?.status === 'fulfilled' ? settled[2].value : null);
 
     for (const s of settled) {
       if (s.status === 'rejected') console.warn('getCourseProgress: partial failure', s.reason?.message);
@@ -1465,8 +1524,16 @@ export const api = {
    * Creates the record if absent; updates it if already present.
    * After marking, recomputes and persists progress_percentage
    * on the enrollment; issues certificate if course is 100% done.
+   *
+   * `userId` must be passed by the caller (typically from `useAuth().user.id`).
+   * Required because Directus rejects POSTs lacking user_id when the policy
+   * has no `$CURRENT_USER` preset configured for these collections.
    */
-  async markLessonComplete(lessonId) {
+  async markLessonComplete(lessonId, userId) {
+    if (!userId) {
+      throw new Error('Cannot mark lesson complete: missing user id (not authenticated?)');
+    }
+
     // 1. Upsert lesson_progress
     const existing = await authFetch(
       `/items/lesson_progress?filter[lesson_id][_eq]=${lessonId}&filter[user_id][_eq]=$CURRENT_USER&limit=1`
@@ -1482,6 +1549,7 @@ export const api = {
       progress = await authFetch('/items/lesson_progress', {
         method: 'POST',
         body: {
+          user_id: userId,
           lesson_id: lessonId,
           completed: true,
           completed_at: new Date().toISOString(),
@@ -1489,11 +1557,13 @@ export const api = {
       });
     }
 
-    // 2. Resolve course_id from lesson → module → course chain
+    // 2. Resolve course_id from lesson.
+    // Schema audit (24.7E) confirmed `lessons.course` is the direct M2O to
+    // courses — there is no `module.course_id` path.
     const lesson = await authFetch(
-      `/items/lessons/${lessonId}?fields=module.course_id`
+      `/items/lessons/${lessonId}?fields=course`
     );
-    const courseId = lesson?.module?.course_id;
+    const courseId = lesson?.course;
     if (!courseId) return progress;
 
     // 3. Recompute progress and update enrollment
@@ -1522,6 +1592,7 @@ export const api = {
         await authFetch('/items/certificates', {
           method: 'POST',
           body: {
+            user_id: userId,
             course_id: courseId,
             issued_at: new Date().toISOString(),
           },
@@ -1601,12 +1672,20 @@ export const api = {
   },
 
   /**
-   * Request manual access (Level 22)
+   * Request manual access (Level 22).
+   *
+   * `userId` must be passed by the caller (typically from `useAuth().user.id`).
+   * Required because Directus rejects POSTs to `course_access` lacking
+   * user_id when the policy has no `$CURRENT_USER` preset configured.
    */
-  async requestCourseAccess(courseId) {
+  async requestCourseAccess(courseId, userId) {
+    if (!userId) {
+      throw new Error('Cannot request course access: missing user id (not authenticated?)');
+    }
     return authFetch('/items/course_access', {
       method: 'POST',
       body: {
+        user_id: userId,
         course_id: courseId,
         access_type: 'request',
         status: 'pending',

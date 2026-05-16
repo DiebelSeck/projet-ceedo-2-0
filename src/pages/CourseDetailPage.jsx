@@ -160,7 +160,7 @@ export default function CourseDetailPage() {
           setHasAccess(true);
         }
 
-        const data = await api.getCourseProgress(course.id);
+        const data = await api.getCourseProgress(course.id, course);
         setProgress(data);
       } catch (err) {
         console.error('Progress load error:', err);
@@ -179,7 +179,7 @@ export default function CourseDetailPage() {
         throw new Error("Vous devez être connecté pour vous inscrire.");
       }
       await api.enrollInCourse(course.id, user.id);
-      const data = await api.getCourseProgress(course.id);
+      const data = await api.getCourseProgress(course.id, course);
       setProgress(data);
     } catch (err) {
       setEnrollError(err.message || "Erreur lors de l'inscription.");
@@ -339,7 +339,10 @@ export default function CourseDetailPage() {
                            <button
                              onClick={async () => {
                                try {
-                                 await api.requestCourseAccess(course.id);
+                                 if (!user?.id) {
+                                   throw new Error("Vous devez être connecté.");
+                                 }
+                                 await api.requestCourseAccess(course.id, user.id);
                                  setAccessStatus('pending');
                                } catch (err) {
                                  alert(err.message);
@@ -364,12 +367,21 @@ export default function CourseDetailPage() {
                          Se connecter pour s'inscrire
                        </Link>
                      </div>
-                   ) : progress?.enrollment ? (
+                   ) : progress?.enrollment ? (() => {
+                     // Derive the visual status from actual progress, not from
+                     // the persisted enrollment.status. Persistence stays as-is;
+                     // this only affects the label shown to the user.
+                     const isCompleted =
+                       progress &&
+                       progress.totalLessons > 0 &&
+                       progress.completedLessons >= progress.totalLessons;
+                     const displayStatus = isCompleted ? 'Terminé' : 'En cours';
+                     return (
                      <div className="flex flex-col gap-5">
                        <div className="flex items-center justify-between">
                          <span className="text-[10px] uppercase tracking-[0.2em] text-white/60">Statut</span>
                          <span className="text-[10px] uppercase tracking-[0.2em] text-[#8b6914]">
-                           {STATUS_LABEL[progress.enrollment.status] ?? progress.enrollment.status}
+                           {displayStatus}
                          </span>
                        </div>
                        <div className="flex flex-col gap-2">
@@ -383,7 +395,8 @@ export default function CourseDetailPage() {
                          {progress.completedLessons} / {progress.totalLessons} leçons complétées
                        </div>
                      </div>
-                   ) : (
+                     );
+                   })() : (
                      <div className="text-center">
                        <p className="text-sm font-serif italic text-white/70 mb-8 leading-relaxed">
                          Ce parcours est accessible gratuitement aux membres du Projet Ceedo.

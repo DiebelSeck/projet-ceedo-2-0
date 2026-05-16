@@ -9,7 +9,7 @@ import PremiumAccessPanel from '../components/academy/PremiumAccessPanel';
 
 export default function LessonDetailPage() {
   const { courseSlug, lessonSlug } = useParams();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
 
   const [lesson, setLesson] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,7 @@ export default function LessonDetailPage() {
         setHasAccess(true);
       }
 
-      const data = await api.getCourseProgress(lesson.course.id);
+      const data = await api.getCourseProgress(lesson.course.id, lesson.course);
       setIsEnrolled(!!data?.enrollment);
       const ids = new Set((data?.modules || []).flatMap(m => m.lessons.filter(l => l.completed).map(l => l.id)));
       setCompletedIds(ids);
@@ -71,7 +71,10 @@ export default function LessonDetailPage() {
     setEnrolling(true);
     setEnrollError(null);
     try {
-      await api.enrollInCourse(lesson.course.id);
+      if (!user?.id) {
+        throw new Error("Vous devez être connecté pour vous inscrire.");
+      }
+      await api.enrollInCourse(lesson.course.id, user.id);
       await loadProgress();
     } catch (err) {
       setEnrollError(err.message || "Erreur lors de l'inscription.");
@@ -84,7 +87,10 @@ export default function LessonDetailPage() {
     setCompleting(true);
     setMarkError(null);
     try {
-      await api.markLessonComplete(lesson.id);
+      if (!user?.id) {
+        throw new Error("Vous devez être connecté.");
+      }
+      await api.markLessonComplete(lesson.id, user.id);
       await loadProgress();
     } catch (err) {
       setMarkError(err.message || 'Une erreur est survenue.');

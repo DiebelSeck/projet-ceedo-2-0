@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { api } from '../../lib/api';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function PremiumAccessPanel({ course, accessStatus, setAccessStatus }) {
+  const { user } = useAuth();
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -26,7 +28,10 @@ export default function PremiumAccessPanel({ course, accessStatus, setAccessStat
     try {
       setRequesting(true);
       setError(null);
-      await api.requestCourseAccess(course.id);
+      if (!user?.id) {
+        throw new Error("Vous devez être connecté pour demander un accès.");
+      }
+      await api.requestCourseAccess(course.id, user.id);
       if (setAccessStatus) {
         setAccessStatus('pending');
       }
