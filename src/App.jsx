@@ -23,6 +23,8 @@ import AccessibilitePage from './pages/AccessibilitePage'
 import ConditionsUtilisationPage from './pages/ConditionsUtilisationPage'
 import AcademicPublicationsIndexPage from './pages/AcademicPublicationsIndexPage'
 import AcademicPublicationDetailPage from './pages/AcademicPublicationDetailPage'
+import PublicationsListPage from './pages/PublicationsListPage'
+import PublicationDetailPage from './pages/PublicationDetailPage'
 import DossiersIndexPage from './pages/DossiersIndexPage'
 import DossierDetailPage from './pages/DossierDetailPage'
 import EditorPanelPage from './pages/EditorPanelPage'
@@ -63,11 +65,13 @@ export default function App() {
           <Route path="publications" element={<AcademicPublicationsIndexPage />} />
           <Route path="publications/:slug" element={<AcademicPublicationDetailPage />} />
 
-          {/* Aliases — /articles paths used by cards, breadcrumbs and cross-links
-              resolve to the same Think Tank views as /publications. Keeps every
-              existing <Link to="/articles/..."> alive without touching callers. */}
-          <Route path="articles" element={<AcademicPublicationsIndexPage />} />
-          <Route path="articles/:slug" element={<AcademicPublicationDetailPage />} />
+          {/* /articles — editorial articles surfaced from Directus `articles`.
+              Distinct from /publications (Think Tank `publications` collection).
+              These two pages were the original list+detail and use the
+              api.getArticles / api.getArticleBySlug helpers, which is the same
+              source used by the homepage's FeaturedPublications block. */}
+          <Route path="articles" element={<PublicationsListPage />} />
+          <Route path="articles/:slug" element={<PublicationDetailPage />} />
           
           <Route path="dossiers" element={<DossiersIndexPage />} />
           <Route path="dossiers/:slug" element={<DossierDetailPage />} />

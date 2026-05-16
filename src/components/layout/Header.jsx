@@ -82,21 +82,24 @@ export default function Header() {
                   className="absolute left-0 top-full pt-2 w-[780px]"
                   onMouseLeave={() => setExplorerOpen(false)}
                 >
-                  <div className="bg-white border border-[#e5e0d6] shadow-2xl p-8">
-                    {/* Mega Menu Header */}
-                    <div className="mb-8 pb-6 border-b border-[#faf9f6]">
-                      <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-[#8b6914] mb-1">
+                  <div className="bg-white border border-[#d8d5ce] shadow-xl p-10">
+                    {/* Mega Menu Header — institutional eyebrow + serif tagline */}
+                    <div className="mb-10 pb-6 border-b border-[#d8d5ce]/60">
+                      <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-[#8b6914] mb-2">
                         Explorer le système Ceedo
                       </p>
-                      <p className="text-sm text-[#767676] font-serif italic">
+                      <p
+                        className="text-base text-[#4a4a4a] italic leading-relaxed"
+                        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                      >
                         Naviguer par axes, espaces et ressources.
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-8">
+                    <div className="grid grid-cols-4 gap-10">
                       {/* Column 1: Axes (Catégories) */}
                       <div>
-                        <h4 className="text-[9px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-4 border-b border-[#faf9f6] pb-2">
+                        <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-5 pb-3 border-b border-[#d8d5ce]/40">
                           Axes
                         </h4>
                         <div className="flex flex-col gap-1">
@@ -111,7 +114,7 @@ export default function Header() {
 
                       {/* Column 2: Espaces */}
                       <div>
-                        <h4 className="text-[9px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-4 border-b border-[#faf9f6] pb-2">
+                        <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-5 pb-3 border-b border-[#d8d5ce]/40">
                           Espaces
                         </h4>
                         <div className="flex flex-col gap-1">
@@ -123,7 +126,7 @@ export default function Header() {
 
                       {/* Column 3: Ressources */}
                       <div>
-                        <h4 className="text-[9px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-4 border-b border-[#faf9f6] pb-2">
+                        <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-5 pb-3 border-b border-[#d8d5ce]/40">
                           Ressources
                         </h4>
                         <div className="flex flex-col gap-1">
@@ -137,7 +140,7 @@ export default function Header() {
 
                       {/* Column 4: Auteur */}
                       <div>
-                        <h4 className="text-[9px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-4 border-b border-[#faf9f6] pb-2">
+                        <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6914] mb-5 pb-3 border-b border-[#d8d5ce]/40">
                           Auteur
                         </h4>
                         <div className="flex flex-col gap-1">
@@ -356,7 +359,7 @@ function MegaLink({ to, label }) {
   return (
     <Link
       to={to}
-      className="px-2 py-1.5 -ml-2 text-[10px] font-bold uppercase tracking-wider text-[#4a4a4a] hover:text-[#8b6914] hover:bg-[#faf9f6] transition-all rounded-sm"
+      className="px-3 py-2 -ml-3 text-[10px] font-bold uppercase tracking-widest text-[#4a4a4a] hover:text-[#8b6914] hover:bg-[#faf9f6] transition-colors"
     >
       {label}
     </Link>

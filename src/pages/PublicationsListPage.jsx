@@ -35,7 +35,7 @@ export default function PublicationsListPage() {
   return (
     <div className="bg-white min-h-screen">
       {/* Editorial Header */}
-      <div className="bg-parchment-pale py-20 md:py-32 border-b border-border-light/30">
+      <div className="bg-parchment py-20 md:py-32 border-b border-border-light/30">
         <div className="max-w-7xl mx-auto px-6">
           <header className="max-w-3xl">
             <SectionHeader
