@@ -5,6 +5,15 @@ import SectionHeader from '../components/ui/SectionHeader';
 
 const DIRECTUS_URL = import.meta.env.VITE_DIRECTUS_URL || 'https://admin.projetceedo20.org';
 
+function formatDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: '2-digit' });
+  } catch {
+    return iso;
+  }
+}
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,22 +128,45 @@ export default function AdminUsersPage() {
               <thead>
                 <tr className="border-b border-[#d8d5ce] bg-[#faf9f6]">
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Utilisateur</th>
+                  <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Inscription</th>
+                  <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Dernière activité</th>
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold text-center">Inscriptions</th>
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold text-center">Formations Complétées</th>
+                  <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold text-center">Progression</th>
+                  <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold text-center">Actif (30j)</th>
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold text-center">Certificats</th>
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold text-right">Détails</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map(u => (
+                {filteredUsers.map(u => {
+                  const avgProgress = Number.isFinite(u.averageProgress) ? u.averageProgress : 0;
+                  return (
                   <React.Fragment key={u.id}>
                     <tr className="border-b border-[#e8e6e1] hover:bg-[#faf9f6]/50 transition-colors">
                       <td className="p-4">
                         <div className="font-bold text-[#1a1a1a] text-sm">{u.name || 'Sans nom'}</div>
                         <div className="text-[11px] text-[#767676] mt-1">{u.email}</div>
                       </td>
+                      <td className="p-4 text-[11px] text-[#4a4a4a]">{formatDate(u.enrollmentDate)}</td>
+                      <td className="p-4 text-[11px] text-[#4a4a4a]">{formatDate(u.lastActivity)}</td>
                       <td className="p-4 text-center font-medium text-[#1a1a1a]">{u.enrollments.length}</td>
                       <td className="p-4 text-center font-medium text-[#1a1a1a]">{u.completed_count}</td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2 justify-center">
+                          <div className="w-20 bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-[#8b6914] h-full" style={{ width: `${avgProgress}%` }} />
+                          </div>
+                          <span className="text-[10px] font-bold text-[#4a4a4a] w-8 text-right">{avgProgress}%</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        {u.active30d ? (
+                          <span className="inline-block px-2 py-1 text-[9px] uppercase tracking-widest font-bold border bg-green-50 text-green-700 border-green-200">Oui</span>
+                        ) : (
+                          <span className="inline-block px-2 py-1 text-[9px] uppercase tracking-widest font-bold border bg-gray-100 text-gray-600 border-gray-200">Non</span>
+                        )}
+                      </td>
                       <td className="p-4 text-center font-medium text-[#1a1a1a]">{u.certificates.length}</td>
                       <td className="p-4 text-right">
                         <button
@@ -147,7 +179,7 @@ export default function AdminUsersPage() {
                     </tr>
                     {expandedUserId === u.id && (
                       <tr className="bg-[#faf9f6] border-b border-[#d8d5ce]">
-                        <td colSpan="5" className="p-6">
+                        <td colSpan="9" className="p-6">
                           <div className="flex flex-col gap-4 max-w-3xl">
                             <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#4a4a4a] border-b border-[#d8d5ce] pb-2">
                               Détail des inscriptions
@@ -175,7 +207,8 @@ export default function AdminUsersPage() {
                       </tr>
                     )}
                   </React.Fragment>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}

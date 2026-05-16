@@ -68,8 +68,8 @@ export default function AdminDashboardPage() {
             internalLinkUrl="/admin/users"
           />
           <AdminStatCard
-            title="Étudiants actifs"
-            value={stats?.activeStudents ?? 0}
+            title="Actifs (30j)"
+            value={stats?.activeStudents30d ?? 0}
             icon="🧑‍🎓"
             linkText="Suivre la progression"
             internalLinkUrl="/admin/progress"

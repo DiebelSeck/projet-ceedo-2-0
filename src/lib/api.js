@@ -1770,7 +1770,7 @@ export const api = {
       fetchCount('/items/lesson_progress?filter[completed][_eq]=true&limit=0&meta=filter_count'),
       fetchCount('/items/certificates?limit=0&meta=filter_count'),
       fetchCount('/items/course_access?filter[status][_eq]=pending&limit=0&meta=filter_count'),
-      fetchItems('/items/course_enrollments?fields=id,user_id,course_id,progress_percentage,status&limit=-1'),
+      fetchItems('/items/course_enrollments?fields=id,user_id,course_id,progress_percentage,status,started_at,completed_at&limit=-1'),
       fetchItems('/items/courses?fields=id,is_paid&limit=-1'),
     ]);
 
@@ -1789,18 +1789,26 @@ export const api = {
     // Unique active learners and average progress derived client-side from
     // the enrollment list. Defensive against `user_id`/`course_id` arriving
     // either as a string id or as an expanded object.
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const activityCutoff = Date.now() - THIRTY_DAYS_MS;
     const uniqueLearners = new Set();
+    const recentLearners = new Set();
     let progressSum = 0;
     let progressCount = 0;
     for (const e of enrollments) {
       const uid = typeof e?.user_id === 'object' ? e?.user_id?.id : e?.user_id;
       if (uid) uniqueLearners.add(uid);
+      const tStarted   = e?.started_at   ? Date.parse(e.started_at)   : 0;
+      const tCompleted = e?.completed_at ? Date.parse(e.completed_at) : 0;
+      const lastActivityTs = Math.max(tStarted || 0, tCompleted || 0);
+      if (uid && lastActivityTs >= activityCutoff) recentLearners.add(uid);
       if (Number.isFinite(e?.progress_percentage)) {
         progressSum += e.progress_percentage;
         progressCount += 1;
       }
     }
     const activeStudents = uniqueLearners.size;
+    const activeStudents30d = recentLearners.size;
     const completionRate = progressCount > 0
       ? Math.round(progressSum / progressCount)
       : 0;
@@ -1816,6 +1824,7 @@ export const api = {
     return {
       totalStudents,
       activeStudents,
+      activeStudents30d,
       totalCourses,
       publishedCourses,
       totalLessons,
@@ -1932,7 +1941,7 @@ export const api = {
   async getAdminUsersLearningOverview() {
     const [users, enrollments, certificates] = await Promise.all([
       authFetch('/items/directus_users?fields=id,first_name,last_name,email&limit=-1'),
-      authFetch('/items/course_enrollments?fields=id,user_id,course_id.title,status,progress_percentage&limit=-1'),
+      authFetch('/items/course_enrollments?fields=id,user_id,course_id.title,status,progress_percentage,started_at,completed_at&limit=-1'),
       authFetch('/items/certificates?fields=id,user_id,course_id.title&limit=-1')
     ]);
 
@@ -1967,6 +1976,44 @@ export const api = {
       const u = getOrCreateUser(uId);
       u.certificates.push(c);
     });
+
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const activityCutoff = Date.now() - THIRTY_DAYS_MS;
+
+    for (const u of activeUsers.values()) {
+      let earliestStart = Infinity;
+      let latestActivity = 0;
+      let progressSum = 0;
+      let progressCount = 0;
+      const completionDurationsMs = [];
+
+      for (const e of u.enrollments) {
+        const tStart = e?.started_at   ? Date.parse(e.started_at)   : NaN;
+        const tEnd   = e?.completed_at ? Date.parse(e.completed_at) : NaN;
+        if (Number.isFinite(tStart)) {
+          if (tStart < earliestStart) earliestStart = tStart;
+          if (tStart > latestActivity) latestActivity = tStart;
+        }
+        if (Number.isFinite(tEnd)) {
+          if (tEnd > latestActivity) latestActivity = tEnd;
+          if (e.status === 'completed' && Number.isFinite(tStart) && tEnd >= tStart) {
+            completionDurationsMs.push(tEnd - tStart);
+          }
+        }
+        if (Number.isFinite(e?.progress_percentage)) {
+          progressSum += e.progress_percentage;
+          progressCount += 1;
+        }
+      }
+
+      u.enrollmentDate = Number.isFinite(earliestStart) ? new Date(earliestStart).toISOString() : null;
+      u.lastActivity   = latestActivity > 0 ? new Date(latestActivity).toISOString() : null;
+      u.active30d      = latestActivity > 0 && latestActivity >= activityCutoff;
+      u.averageProgress = progressCount > 0 ? Math.round(progressSum / progressCount) : 0;
+      u.averageCompletionDays = completionDurationsMs.length > 0
+        ? Math.round(completionDurationsMs.reduce((a, b) => a + b, 0) / completionDurationsMs.length / (24 * 60 * 60 * 1000))
+        : null;
+    }
 
     return Array.from(activeUsers.values());
   }

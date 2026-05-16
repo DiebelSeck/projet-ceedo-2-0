@@ -14,6 +14,16 @@ function formatDate(iso) {
   }
 }
 
+function formatDurationDays(startIso, endIso) {
+  if (!startIso || !endIso) return '—';
+  const start = Date.parse(startIso);
+  const end = Date.parse(endIso);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return '—';
+  const days = Math.round((end - start) / (24 * 60 * 60 * 1000));
+  if (days === 0) return '< 1 j';
+  return `${days} j`;
+}
+
 const STATUS_LABEL = {
   active: { label: 'En cours', className: 'bg-blue-50 text-blue-700 border-blue-200' },
   completed: { label: 'Complétée', className: 'bg-green-50 text-green-700 border-green-200' },
@@ -147,6 +157,7 @@ export default function AdminProgressPage() {
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Statut</th>
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Démarrée</th>
                   <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Terminée</th>
+                  <th className="p-4 text-[10px] uppercase tracking-widest text-[#767676] font-bold">Durée</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,6 +193,7 @@ export default function AdminProgressPage() {
                       </td>
                       <td className="p-4 text-[11px] text-[#4a4a4a]">{formatDate(r.started_at)}</td>
                       <td className="p-4 text-[11px] text-[#4a4a4a]">{formatDate(r.completed_at)}</td>
+                      <td className="p-4 text-[11px] text-[#4a4a4a]">{formatDurationDays(r.started_at, r.completed_at)}</td>
                     </tr>
                   );
                 })}
