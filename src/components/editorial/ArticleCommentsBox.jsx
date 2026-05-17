@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 
+const ARTICLE_COMMENTS_ENABLED = import.meta.env.VITE_ARTICLE_COMMENTS_ENABLED === 'true';
+
 /**
  * ArticleCommentsBox displays a thread of editorial comments and allows authorized
  * users to add new ones.
@@ -23,6 +25,12 @@ export default function ArticleCommentsBox({ articleId, readOnly = false }) {
   const isEditorialRole = ['Admin', 'Editor', 'Reviewer'].includes(userRole);
 
   useEffect(() => {
+    if (!ARTICLE_COMMENTS_ENABLED) {
+      setPermissionDenied(true);
+      setLoading(false);
+      return;
+    }
+
     if (articleId) loadComments();
   }, [articleId]);
 
@@ -87,13 +95,13 @@ export default function ArticleCommentsBox({ articleId, readOnly = false }) {
   return (
     <div className="bg-[#faf9f6] border border-[#d8d5ce] p-6 lg:p-8">
       <h3 className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#1a1a1a] mb-8 border-b border-[#d8d5ce] pb-4 flex items-center justify-between">
-        Discussion Éditoriale
+        {'Discussion \u00C9ditoriale'}
         <span className="text-[#767676]">{comments.length} message{comments.length > 1 ? 's' : ''}</span>
       </h3>
 
       {permissionDenied ? (
         <p className="text-sm text-[#767676] italic font-serif text-center py-4">
-          Commentaires indisponibles pour votre rôle actuel.
+          {'Commentaires indisponibles pour votre r\u00F4le actuel.'}
         </p>
       ) : (
         <>
