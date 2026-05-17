@@ -975,7 +975,7 @@ export const api = {
 
   async getArticleById(id) {
     if (!id) throw new Error('Article id is required');
-    return authFetch(`/items/articles/${id}?fields=id,status,title,slug,excerpt,content,community,category,meta_title,meta_description,featured_image,editor_notes,revision_count,last_editorial_action,reviewed_at,approved_at,published_at,Author.id,Author.first_name,Author.last_name,reviewed_by.first_name,reviewed_by.last_name,approved_by.first_name,approved_by.last_name,published_by.first_name,published_by.last_name`);
+    return authFetch(`/items/articles/${id}?fields=id,status,title,slug,excerpt,content,community,category,meta_title,meta_description,featured_image,date_created,date_updated,Author.id,Author.first_name,Author.last_name`);
   },
 
   async getEditorialArticles(status = 'review') {
