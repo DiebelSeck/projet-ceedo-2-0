@@ -157,16 +157,30 @@ export default function LessonDetailPage() {
 
           <div className="lg:col-span-8">
             {/* Media */}
-            {canAccessContent && (lesson.video_url || lesson.audio_url) && (
-              <div className="aspect-video bg-[#1a1a1a] mb-16 flex items-center justify-center text-white p-8">
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full border-2 border-[#8b6914] flex items-center justify-center text-[#8b6914] mb-4 mx-auto cursor-pointer hover:bg-[#8b6914] hover:text-white transition-all">
-                    ▶
-                  </div>
-                  <p className="text-[10px] uppercase font-bold tracking-widest text-white/50">
-                    {lesson.video_url ? 'Conférence Vidéo' : 'Support Audio'}
-                  </p>
-                </div>
+            {canAccessContent && lesson.video_url && (
+              <div className="mb-16 overflow-hidden border border-[#d8d5ce] bg-[#1a1a1a]">
+                <video
+                  controls
+                  className="aspect-video w-full bg-[#1a1a1a]"
+                  src={lesson.video_url}
+                >
+                  Votre navigateur ne prend pas en charge la lecture vidéo.
+                </video>
+              </div>
+            )}
+
+            {canAccessContent && !lesson.video_url && lesson.audio_url && (
+              <div className="mb-16 border border-[#d8d5ce] bg-[#faf9f6] p-8">
+                <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.3em] text-[#8b6914]">
+                  Support audio
+                </p>
+                <audio
+                  controls
+                  className="w-full"
+                  src={lesson.audio_url}
+                >
+                  Votre navigateur ne prend pas en charge la lecture audio.
+                </audio>
               </div>
             )}
 
