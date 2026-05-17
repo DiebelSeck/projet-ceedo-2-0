@@ -1,14 +1,21 @@
 import { Link } from 'react-router-dom';
 
+const DIRECTUS_URL = import.meta.env.VITE_DIRECTUS_URL || 'https://admin.projetceedo20.org';
+
 export default function ArticleHeader({ article }) {
   const {
     title,
-    excerpt, 
+    excerpt,
     category,
     author,
     readingTime,
     dateCreated
   } = article;
+
+  const imageId = article.featuredImage || article.featured_image;
+  const heroImageUrl = imageId
+    ? `${DIRECTUS_URL}/assets/${imageId}?width=1600&fit=cover`
+    : null;
 
   const formatDate = (iso) => {
     return new Date(iso).toLocaleDateString('fr-FR', {
@@ -48,6 +55,17 @@ export default function ArticleHeader({ article }) {
           </p>
         )}
       </div>
+
+      {/* Featured / Hero Image */}
+      {heroImageUrl && (
+        <figure className="mb-10 -mx-6 md:mx-0 overflow-hidden border-y md:border border-border-light/40">
+          <img
+            src={heroImageUrl}
+            alt={title || ''}
+            className="w-full h-auto max-h-[560px] object-cover"
+          />
+        </figure>
+      )}
 
       {/* Metadata Row */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-10 bg-parchment/10 px-8 py-5 border-y border-border-light/40">

@@ -128,6 +128,7 @@ function normalizeArticle(article) {
     metaTitle: article.meta_title || article.title,
     metaDescription: article.meta_description || article.excerpt,
     featuredImage: article.featured_image,
+    featured_image: article.featured_image,
     category: article.category ? {
       id: article.category.id,
       name: article.category.name,

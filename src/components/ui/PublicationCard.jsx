@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 
+const DIRECTUS_URL = import.meta.env.VITE_DIRECTUS_URL || 'https://admin.projetceedo20.org';
+
 const TYPE_LABELS = {
   article: 'Article',
   dossier: 'Dossier',
@@ -18,17 +20,20 @@ function formatDate(iso) {
 export default function PublicationCard({ publication, variant = 'default' }) {
   if (!publication) return null;
 
-  const { 
-    slug, 
+  const {
+    slug,
     id,
-    title, 
-    excerpt, 
-    author, 
+    title,
+    excerpt,
+    author,
     category,
     dateCreated,
     readingTime,
     tags = []
   } = publication;
+
+  const imageId = publication.featuredImage || publication.featured_image;
+  const imageUrl = imageId ? `${DIRECTUS_URL}/assets/${imageId}` : null;
 
   const displaySlug = slug || id;
   const displayTitle = title || 'Sans titre';
@@ -49,7 +54,18 @@ export default function PublicationCard({ publication, variant = 'default' }) {
         {/* Hover Accent */}
         <div className="absolute left-0 top-0 w-1 h-full bg-gold scale-y-0 group-hover:scale-y-100 transition-transform duration-500 origin-top"></div>
         
-        <Link to={`/articles/${displaySlug}`} className="flex flex-col h-full p-8 md:p-12">
+        <Link to={`/articles/${displaySlug}`} className="flex flex-col h-full">
+          {imageUrl && (
+            <div className="aspect-[16/9] overflow-hidden border-b border-border-light/40">
+              <img
+                src={`${imageUrl}?width=800&height=450&fit=cover`}
+                alt=""
+                loading="lazy"
+                className="w-full h-full object-cover grayscale-[0.4] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
+              />
+            </div>
+          )}
+          <div className="flex flex-col h-full p-8 md:p-12">
           <div className="flex items-center justify-between mb-8">
             <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-gold">
               {displayType}
@@ -82,6 +98,7 @@ export default function PublicationCard({ publication, variant = 'default' }) {
               {displayReadingTime} min
             </div>
           </div>
+          </div>
         </Link>
       </article>
     );
@@ -90,6 +107,16 @@ export default function PublicationCard({ publication, variant = 'default' }) {
   return (
     <article className="group relative py-8 border-b border-border-light/40 last:border-0 hover:translate-x-2 transition-transform duration-500">
       <Link to={`/articles/${displaySlug}`} className="flex flex-col md:flex-row md:items-start gap-8">
+        {imageUrl && (
+          <div className="md:w-48 lg:w-56 shrink-0 overflow-hidden aspect-[5/3] md:aspect-[4/3]">
+            <img
+              src={`${imageUrl}?width=400&height=300&fit=cover`}
+              alt=""
+              loading="lazy"
+              className="w-full h-full object-cover grayscale-[0.4] group-hover:grayscale-0 transition-all duration-500"
+            />
+          </div>
+        )}
         <div className="flex-1">
           <div className="flex items-center gap-4 mb-4">
             <span className="text-[9px] uppercase tracking-[0.3em] font-bold text-gold">
