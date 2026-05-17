@@ -40,3 +40,7 @@ coverage
 
 # Claude / herramientas IA
 .claude/
+
+# Importaciones editoriales locales
+imports/
+*.xml
