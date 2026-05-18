@@ -1843,7 +1843,7 @@ export const api = {
    */
   async getAdminCertificates() {
     return authFetch(
-      '/items/certificates?fields=id,issued_at,certificate_code,certificate_url,course_id.id,course_id.title,course_id.slug,user_id.id,user_id.first_name,user_id.last_name,user_id.email&sort=-issued_at&limit=-1'
+      '/items/certificates?fields=id,issued_at,certificate_url,course_id.id,course_id.title,course_id.slug,user_id.id,user_id.first_name,user_id.last_name,user_id.email&sort=-issued_at&limit=-1'
     );
   },
 
