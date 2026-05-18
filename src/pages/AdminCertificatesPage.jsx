@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import SectionHeader from '../components/ui/SectionHeader';
+import AdminLoadingState from '../components/admin/ui/AdminLoadingState';
+import AdminErrorState from '../components/admin/ui/AdminErrorState';
 
 const DIRECTUS_URL = import.meta.env.VITE_DIRECTUS_URL || 'https://admin.projetceedo20.org';
 
@@ -545,13 +547,9 @@ export default function AdminCertificatesPage() {
 
         <div className="bg-white border border-[#d8d5ce] overflow-x-auto">
           {loading ? (
-            <div className="p-12 flex justify-center">
-              <div className="w-8 h-8 border-4 border-[#8b6914]/20 border-t-[#8b6914] rounded-full animate-spin" />
-            </div>
+            <AdminLoadingState message="Chargement des certificats…" />
           ) : error ? (
-            <div className="p-12 text-center text-red-700 font-serif italic">
-              Erreur : {error}
-            </div>
+            <AdminErrorState message={error} />
           ) : filtered.length === 0 ? (
             <div className="p-12 text-center text-[#767676] font-serif italic">
               {certs.length === 0 ? (
